@@ -33,7 +33,7 @@ void iopmp_validate_access(iopmp_trans_req_t *trans_req, iopmp_trans_rsp_t* iopm
     iopmp_trans_rsp->user         = 0;
     iopmp_trans_rsp->status       = IOPMP_ERROR;
     #if (IOPMP_RRID_TRANSL_EN)
-        iopmp_trans_rsp->rrid_transl = g_reg_file.hwcfg2.rrid_transl;
+        iopmp_trans_rsp->rrid_transl = g_reg_file.hwcfg3.rrid_transl;
     #endif
 
     // Check to block invalid combination
@@ -125,15 +125,19 @@ void iopmp_validate_access(iopmp_trans_req_t *trans_req, iopmp_trans_rsp_t* iopm
             lwr_entry = (cur_md == 0) ? 0 : g_reg_file.mdcfg[cur_md - 1].t;
             upr_entry = g_reg_file.mdcfg[cur_md].t;
         #else
-            lwr_entry = cur_md * (g_reg_file.hwcfg0.md_entry_num + 1);
-            upr_entry = ((cur_md + 1) * (g_reg_file.hwcfg0.md_entry_num + 1));
+            lwr_entry = cur_md * (g_reg_file.hwcfg3.md_entry_num + 1);
+            upr_entry = ((cur_md + 1) * (g_reg_file.hwcfg3.md_entry_num + 1));
         #endif
 
         for (int cur_entry = lwr_entry; cur_entry <= upr_entry; cur_entry++) {
             uint64_t prev_addr     = (cur_entry == 0) ? 0 : CONCAT32(iopmp_entries.entry_table[cur_entry - 1].entry_addrh.addrh, iopmp_entries.entry_table[cur_entry - 1].entry_addr.addr);
             uint64_t curr_addr     = CONCAT32(iopmp_entries.entry_table[cur_entry].entry_addrh.addrh, iopmp_entries.entry_table[cur_entry].entry_addr.addr);
             entry_cfg_t entry_cfg  = iopmp_entries.entry_table[cur_entry].entry_cfg;
-            bool is_priority_entry = (cur_entry < g_reg_file.hwcfg2.prio_entry);
+            #if (IOPMP_NON_PRIO_EN)
+                bool is_priority_entry = (cur_entry < g_reg_file.hwcfg2.prio_entry);
+            #else
+                bool is_priority_entry = true;
+            #endif
 
             // Analyze entry for match
             iopmpMatchStatus = iopmpRuleAnalyzer(*trans_req, prev_addr, curr_addr, entry_cfg, cur_md, is_priority_entry);

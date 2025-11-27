@@ -95,7 +95,7 @@ void configure_srcmd_n(uint8_t srcmd_reg, uint16_t srcmd_idx, reg_intf_dw data, 
   * @param num_bytes It could be 4-Byte write or 8-Byte Write.
  **/
 void configure_mdcfg_n(uint8_t md_idx, reg_intf_dw data, uint8_t num_bytes){
-    write_register(MDCFG_TABLE_BASE_OFFSET + (md_idx * 4),   data, num_bytes);
+    write_register(MDCFG_TABLE_BASE_OFFSET + (md_idx * 4), data, num_bytes);
 }
 
 /**
@@ -134,7 +134,11 @@ void receiver_port(uint16_t rrid, uint64_t addr, uint32_t length, uint32_t size,
   * @brief Set Enable High
  **/
 void set_hwcfg0_enable(){
-    write_register(0x0008,read_register(0x0008,4) | 0x80000000,4);  // Set Enable after Programming
+    hwcfg0_t hwcfg0;
+
+    hwcfg0.raw = read_register(HWCFG0_OFFSET, 4);
+    hwcfg0.enable = true;
+    write_register(HWCFG0_OFFSET, hwcfg0.raw, 4);
 }
 
 /**
@@ -147,15 +151,14 @@ void set_hwcfg0_enable(){
  **/
 int error_record_chk(uint8_t err_type, uint8_t req_perm, uint64_t req_addr, bool err_rcd){
     err_info_t err_info_temp;
-    err_info_temp.raw = read_register(0x0064, 4);
+    err_info_temp.raw = read_register(ERR_INFO_OFFSET, 4);
     if (err_rcd){
         FAIL_IF((err_info_temp.v != 1));
         FAIL_IF((err_info_temp.ttype != req_perm));
         FAIL_IF((err_info_temp.etype != (err_type)));
-        FAIL_IF((read_register(0x0068, 4) != (uint32_t)((req_addr >> 2) & 0xFFFFFFFF)));
-        FAIL_IF((read_register(0x006C, 4) != (uint32_t)((req_addr >> 34) & 0xFFFFFFFF)));
-    }
-    else {
+        FAIL_IF((read_register(ERR_REQADDR_OFFSET, 4) != (uint32_t)((req_addr >> 2) & 0xFFFFFFFF)));
+        FAIL_IF((read_register(ERR_REQADDRH_OFFSET, 4) != (uint32_t)((req_addr >> 34) & 0xFFFFFFFF)));
+    } else {
         FAIL_IF((err_info_temp.v == 1));
     }
 
