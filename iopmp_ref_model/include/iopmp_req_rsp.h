@@ -1,4 +1,8 @@
 /***************************************************************************
+// Copyright (c) 2025 by 10xEngineers.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
 // Author: Yazan Hussnain (yazan.hussain@10xengineers.ai)
 //         Gull Ahmed (gull.ahmed@10xengineers.ai)
 // Date: October 21, 2024
@@ -58,9 +62,7 @@ typedef struct __attribute__((__packed__)) {
     uint32_t rrid;          // Requester ID
     uint8_t  user;          // User mode indicator
     uint8_t  rrid_stalled;  // Requester ID stall status
-#if (IOPMP_RRID_TRANSL_EN)
     uint16_t rrid_transl;
-#endif
     status_e status;        // Transaction status (success or error)
 } iopmp_trans_rsp_t;
 

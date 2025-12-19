@@ -1,4 +1,8 @@
 /***************************************************************************
+// Copyright (c) 2025 by 10xEngineers.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
 // Authors: Mazhar Ali (mazhar.ali@10xengineers.ai)
 //          Gull Ahmed (gull.ahmed@10xengineers.ai)
 // Date: October 21, 2024
@@ -27,12 +31,12 @@
 #define ENTRYOFFSET_OFFSET    0x2C
 #define MDSTALL_OFFSET        0x30
 #define MDSTALLH_OFFSET       0x34
-#define RRISCP_OFFSET         0x38
+#define RRIDSCP_OFFSET        0x38
 #define MDLCK_OFFSET          0x40
 #define MDLCKH_OFFSET         0x44
 #define MDCFGLCK_OFFSET       0x48
 #define ENTRYLCK_OFFSET       0x4C
-#define ERR_OFFSET            0x60
+#define ERR_CFG_OFFSET        0x60
 #define ERR_INFO_OFFSET       0x64
 #define ERR_REQADDR_OFFSET    0x68
 #define ERR_REQADDRH_OFFSET   0x6C
@@ -52,7 +56,15 @@
 
 #define MDCFG_TABLE_BASE_OFFSET 0x0800
 #define SRCMD_TABLE_BASE_OFFSET 0x1000
-#define ENTRY_TABLE_BASE_OFFSET ENTRY_OFFSET
+
+#define SRCMD_WH_OFFSET       0x1014
+
+#define SRCMD_REG_STRIDE      32
+#define ENTRY_REG_STRIDE      16
+
+#define IOPMP_MAX_MD_NUM      63
+#define IOPMP_MAX_RRID_NUM    65535
+#define IOPMP_MAX_ENTRY_NUM   65535
 
 #if (REG_INTF_BUS_WIDTH == 4)
     typedef uint32_t reg_intf_dw;
@@ -60,18 +72,7 @@
     typedef uint64_t reg_intf_dw;
 #endif
 
-// Indicate if HWCFG2 is implemented.
-#define IMP_HWCFG2              (IOPMP_NON_PRIO_EN | IOPMP_CHK_X | \
-                                 IOPMP_PEIS | IOPMP_PEES | IOPMP_SPS_EN | \
-                                 IOPMP_STALL_EN | IOPMP_MFR_EN)
-// Indicate if HWCFG3 is implemented.
-#define IMP_HWCFG3              ((MDCFG_FMT > 0) | (SRCMD_FMT > 0) | \
-                                 IOPMP_NO_X | IOPMP_NO_W | IOPMP_RRID_TRANSL_EN)
-
-extern int reset_iopmp(void);
-extern reg_intf_dw read_register(uint64_t offset, uint8_t num_bytes);
-extern void write_register(uint64_t offset, reg_intf_dw data, uint8_t num_bytes);
-void rrid_stall_update(uint8_t exempt);
+#define ALIGNUP(x, a)   (((x) + ((a) - 1)) & ~((a) - 1))
 
 // VERSION register is a read-only register reporting
 // IOPMP comfiguration information of the instance:
@@ -197,7 +198,6 @@ typedef union {
     uint32_t raw;
 } entryoffset_t;
 
-#if (IOPMP_STALL_EN)
 // MDSTALL is an optional register and used to support
 // atomicity issue while programming the IOPMP, as the IOPMP
 // rule may not be updated in a single transaction.
@@ -246,9 +246,7 @@ typedef union {
     };
     uint32_t raw;
 } rridscp_t;
-#endif
 
-#if (SRCMD_FMT != 1)
 // MDLCK is an optional register with a bitmap field to
 // indicate which MDs are locked in SRCMD table.
 typedef union {
@@ -270,9 +268,6 @@ typedef union {
     uint32_t raw;
 } mdlckh_t;
 
-#endif
-
-#if (MDCFG_FMT == 0)
 // MDCFGLCK is the lock register to MDCFG table.
 typedef union {
     struct {
@@ -283,8 +278,6 @@ typedef union {
     };
     uint32_t raw;
 } mdcfglck_t;
-
-#endif
 
 // ENTRYLCK is the lock register to Entry table.
 typedef union {
@@ -425,8 +418,6 @@ typedef union {
     uint32_t raw;
 } err_user_t;
 
-#if (MDCFG_FMT == 0)
-
 // MDCFG table is a lookup to specify the number of IOPMP entries
 // that is associated with each MD. number of MDCFG registers is equal
 // to HWCFG0.md_num, all MDCFG registers are readable and writable
@@ -434,15 +425,11 @@ typedef union {
     struct {
         uint32_t t   : 16;                  // Indicate the top range of memory domain m.
                                             // An IOPMP entry with index j belongs to MD m
-
         uint32_t rsv : 16;                  // REserved for future use
     };
     uint32_t raw;
 } mdcfg_t;
 
-#endif
-
-#if (SRCMD_FMT == 0)
 // SRCMD_EN register (0, .... , HWCFG1.rrid_num-1) is a specific register
 // for each source (RRID) and indicates which MDs this source maps to
 typedef union {
@@ -510,10 +497,6 @@ typedef union {
     uint32_t raw;
 } srcmd_wh_t;
 
-#endif
-
-#if (SRCMD_FMT == 2)
-
 typedef union {
     struct {
         uint32_t perm  : 32;
@@ -528,27 +511,23 @@ typedef union {
     uint32_t raw;
 } srcmd_permh_t;
 
-#endif
-
-#if (SRCMD_FMT != 1)
 // SRCMD Table contains HWCFG1.rrid_num-1 groups of registers
-typedef struct {
-#if (SRCMD_FMT == 0)
-    srcmd_en_t  srcmd_en;
-    srcmd_enh_t srcmd_enh;
-    srcmd_r_t   srcmd_r;
-    srcmd_rh_t  srcmd_rh;
-    srcmd_w_t   srcmd_w;
-    srcmd_wh_t  srcmd_wh;
-    uint32_t    rsvd[2];
-#elif (SRCMD_FMT == 2)
-    srcmd_perm_t  srcmd_perm;
-    srcmd_permh_t srcmd_permh;
-    uint32_t      rsvd[6];
-#endif
+typedef union {
+    struct {
+        srcmd_en_t  srcmd_en;
+        srcmd_enh_t srcmd_enh;
+        srcmd_r_t   srcmd_r;
+        srcmd_rh_t  srcmd_rh;
+        srcmd_w_t   srcmd_w;
+        srcmd_wh_t  srcmd_wh;
+        uint32_t    rsvd0[2];
+    };
+    struct {
+        srcmd_perm_t  srcmd_perm;
+        srcmd_permh_t srcmd_permh;
+        uint32_t      rsvd1[6];
+    };
 } srcmd_table_t;
-
-#endif
 
 // ENTRY_ADDR registers (0, ..... HWCFG1.entry_num-1) holds physical address
 // of protected memory region
@@ -639,39 +618,17 @@ typedef union {
         implementation_t implementation;
         hwcfg0_t         hwcfg0;
         hwcfg1_t         hwcfg1;
-        union {
-            hwcfg2_t     hwcfg2;
-            uint32_t     reserved12;
-        };
-        union {
-            hwcfg3_t     hwcfg3;
-            uint32_t     reserved13;
-        };
+        hwcfg2_t         hwcfg2;
+        hwcfg3_t         hwcfg3;
         uint32_t         reserved0[5];
         entryoffset_t    entryoffset;
-        #if (IOPMP_STALL_EN)
         mdstall_t        mdstall;
         mdstallh_t       mdstallh;
-        #if (IMP_RRIDSCP)
         rridscp_t        rridscp;
-        #else
-        uint32_t         reserved10;
-        #endif
-        #else
-        uint32_t         reserved7[3];
-        #endif
         uint32_t         reserved1[1];
-        #if (SRCMD_FMT != 1)
         mdlck_t          mdlck;
         mdlckh_t         mdlckh;
-        #else
-        uint32_t         reserved6[2];
-        #endif
-        #if (MDCFG_FMT == 0)
         mdcfglck_t       mdcfglck;
-        #else
-        uint32_t         reserved8;
-        #endif
         entrylck_t       entrylck;
         uint32_t         reserved2[4];
         err_cfg_t        err_cfg;
@@ -679,46 +636,29 @@ typedef union {
         err_reqaddr_t    err_reqaddr;
         err_reqaddrh_t   err_reqaddrh;
         err_reqid_t      err_reqid;
-        #if (IOPMP_MFR_EN)
         err_mfr_t        err_mfr;
-        #else
-        uint32_t         reserved11;
-        #endif
-        #if (MSI_EN)
         err_msiaddr_t    err_msiaddr;
         err_msiaddrh_t   err_msiaddrh;
-        #else
-        uint32_t         reserved9[2];
-        #endif
         err_user_t       err_user[8];
         uint32_t         reserved4[472];
-        #if (MDCFG_FMT == 0)
-        mdcfg_t          mdcfg[IOPMP_MD_NUM];
-        uint32_t         reserved5[(SRCMD_TABLE_BASE_OFFSET - (MDCFG_TABLE_BASE_OFFSET + (IOPMP_MD_NUM * 4))) / 4];
-        #else
-        uint32_t         reserved5[(SRCMD_TABLE_BASE_OFFSET - MDCFG_TABLE_BASE_OFFSET) / 4];
-        #endif
-        #if (SRCMD_FMT == 0)
-        srcmd_table_t    srcmd_table[IOPMP_RRID_NUM];
-        #elif (SRCMD_FMT == 2)
-        srcmd_table_t    srcmd_table[IOPMP_MD_NUM];
-        #endif
+        mdcfg_t          mdcfg[IOPMP_MAX_MD_NUM];
+        uint32_t         reserved5[(SRCMD_TABLE_BASE_OFFSET - (MDCFG_TABLE_BASE_OFFSET + (IOPMP_MAX_MD_NUM * 4))) / 4];
+        srcmd_table_t    srcmd_table[IOPMP_MAX_RRID_NUM];
     };
-    uint32_t        regs4[2048];
-    uint64_t        regs8[2048/2];
+    uint32_t regs4[(SRCMD_TABLE_BASE_OFFSET + (ALIGNUP(IOPMP_MAX_RRID_NUM, sizeof(uint32_t)) * SRCMD_REG_STRIDE)) / sizeof(uint32_t)];
+    uint64_t regs8[(SRCMD_TABLE_BASE_OFFSET + (ALIGNUP(IOPMP_MAX_RRID_NUM, sizeof(uint32_t)) * SRCMD_REG_STRIDE)) / sizeof(uint64_t)];
 } iopmp_regs_t;
 
 typedef union {
     struct __attribute__((__packed__)) {
-        entry_table_t    entry_table[IOPMP_ENTRY_NUM];
+        entry_table_t    entry_table[IOPMP_MAX_ENTRY_NUM];
     };
-    uint32_t        regs4[(IOPMP_ENTRY_NUM * 16) + 4];
-    uint64_t        regs8[((IOPMP_ENTRY_NUM * 16) + 4)/2];
+    uint32_t regs4[(ALIGNUP(IOPMP_MAX_ENTRY_NUM, sizeof(uint32_t)) * ENTRY_REG_STRIDE) / sizeof(uint32_t)];
+    uint64_t regs8[(ALIGNUP(IOPMP_MAX_ENTRY_NUM, sizeof(uint32_t)) * ENTRY_REG_STRIDE) / sizeof(uint64_t)];
 } iopmp_entries_t;
 
-#define ALIGNUP(x, a)   (((x) + ((a) - 1)) & ~((a) - 1))
 // Number of subsequent violation record windows to accommodate all RRIDs.
-#define NUM_SVW         (ALIGNUP(IOPMP_RRID_NUM, 16) / 16)
+#define NUM_SVW         (ALIGNUP(IOPMP_MAX_RRID_NUM, 16) / 16)
 
 typedef struct {
     err_mfr_t sv[NUM_SVW];

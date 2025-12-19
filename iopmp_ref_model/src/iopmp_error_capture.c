@@ -1,4 +1,8 @@
 /***************************************************************************
+// Copyright (c) 2025 by 10xEngineers.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
 // Author: Yazan Hussnain (yazan.hussain@10xengineers.ai)
 //         Gull Ahmed (gull.ahmed@10xengineers.ai)
 // Date: October 24, 2024
@@ -16,71 +20,81 @@
 #include "iopmp.h"
 
 /**
+  * @brief Sets the corresponding bit in the error subsequent violations (SV) structure for a given RRID.
+  *
+  * @param iopmp The IOPMP instance.
+  * @param rrid Resource Record ID (RRID) whose corresponding bit needs to be set in the SV structure.
+  */
+static void setRridSv(iopmp_dev_t *iopmp, uint16_t rrid) {
+    iopmp->err_svs.sv[rrid/16].svw |= (1 << (rrid % 16));
+}
+
+/**
   * @brief Captures and logs error information for a transaction request.
   *
+  * @param iopmp The IOPMP instance.
   * @param trans_type Type of the transaction request (read/write permissions).
   * @param error_type Specific error type encountered during the transaction.
   * @param rrid Requester ID associated with the transaction.
   * @param entry_id IOPMP entry ID where the error was encountered.
   * @param err_addr Address at which the error occurred.
-  * @param intrpt Pointer to an interrupt flag, which is set if an error is captured.
+  * @param intrpt Pointer to the variable to store wired interrupt flag.
+  *               This flag is set to 1 if the following conditions are true:
+  *                 - the transaction fails
+  *                 - a primary error capture occurs
+  *                 - the interrupts are not suppressed
+  *                 - IOPMP doesn't implement MSI extension, or MSI is not enabled
+  *               This flag is set to 0 if the following conditions are true:
+  *                 - this transaction fails
+  *                 - a primary error capture occurs
+  *                 - the interrupts are suppressed, or IOPMP implements MSI extension
+  *                   and triggers MSI instead of wired interrupt
  **/
-void errorCapture(perm_type_e trans_type, uint8_t error_type, uint16_t rrid, uint16_t entry_id, uint64_t err_addr, uint8_t *intrpt) {
-    int err_reqinfo_v = g_reg_file.err_info.v;
-    // If no error has been logged and interrupt and error both are not suppressed, capture error details
-    if (!g_reg_file.err_info.v && (!error_suppress | !intrpt_suppress)) {
-        g_reg_file.err_info.v     = 1;               // Mark error as captured
+void errorCapture(iopmp_dev_t *iopmp, perm_type_e trans_type, uint8_t error_type, uint16_t rrid, uint16_t entry_id, uint64_t err_addr, uint8_t *intrpt) {
+
+    // Current value of ERR_INFO.v
+    int err_reqinfo_v = iopmp->reg_file.err_info.v;
+
+    // First error capture occurs when the following conditions are true:
+    //   - An interrupt is triggered, or a bus error is returned
+    //   - There is no pending error capture, that is, current ERR_INFO.v = '0'
+    bool first_record = (!iopmp->error_suppress || !iopmp->intrpt_suppress) && !err_reqinfo_v;
+
+    if (first_record) {
+        iopmp->reg_file.err_info.v = 1;               // Mark error as captured
         // Set error status and transaction details
-        g_reg_file.err_info.ttype = trans_type;      // Transaction type (read/write)
-        g_reg_file.err_info.etype = error_type;      // Specific error type
+        iopmp->reg_file.err_info.ttype = trans_type;  // Transaction type (read/write)
+        iopmp->reg_file.err_info.etype = error_type;  // Specific error type
 
         // Capture lower and upper parts of error address
-        g_reg_file.err_reqaddr.addr   = (uint32_t)((err_addr >> 2) & UINT32_MAX);         // Error address [33:2]
-        g_reg_file.err_reqaddrh.addrh = (uint32_t)((err_addr >> 34) & UINT32_MAX);        // Error address [65:34]
+        iopmp->reg_file.err_reqaddr.addr   = (uint32_t)((err_addr >> 2) & UINT32_MAX);         // Error address [33:2]
+        iopmp->reg_file.err_reqaddrh.addrh = (uint32_t)((err_addr >> 34) & UINT32_MAX);        // Error address [65:34]
 
         // Record Request ID and Entry ID details
-        g_reg_file.err_reqid.rrid = rrid;
-        g_reg_file.err_reqid.eid  = entry_id;
+        iopmp->reg_file.err_reqid.rrid = rrid;
+        if (iopmp->imp_err_reqid_eid) {
+            // One can implement the error capture record, but doesn't implement
+            // the error entry index record (ERR_REQID.eid).
+            // If IOPMP doesn't implement ERR_REQID.eid it won't be updated.
+            iopmp->reg_file.err_reqid.eid = entry_id;
+        }
 
-    // If an error was previously logged, handle a subsequent violation
-    }
-#if (IOPMP_MFR_EN)
-    else if (!checkRridSv(rrid) && g_reg_file.hwcfg2.mfr_en && (!error_suppress | !intrpt_suppress)) {
-        // Update violation window
-        setRridSv(rrid);
+        generate_interrupt(iopmp, intrpt);
     }
 
-    // Check for any subsequent violation and set err_info.svc
-    for (int i = 0; i < NUM_SVW; i++) {
-        if (err_svs.sv[i].svw) {
-            g_reg_file.err_info.svc = 1;
-            break;
+    // If IOPMP implements Multi-Faults Record extension, IOPMP has ability to
+    // record subsequent violations when the primary error capture registers
+    // recorded last violation and software have not invalidated them yet.
+    if (iopmp->reg_file.hwcfg2.mfr_en) {
+        // Subsequent error capture occurs when the following conditions are true:
+        //   - An interrupt is triggered or a bus error is returned
+        //   - There is a pending error capture, that is, current ERR_INFO.v = '1'
+        bool subsq_record = (!iopmp->error_suppress || !iopmp->intrpt_suppress) && err_reqinfo_v;
+
+        if (subsq_record) {
+            // Update violation window
+            setRridSv(iopmp, rrid);
+            iopmp->reg_file.err_info.svc = 1;
         }
     }
-#endif
-
-    // Generate Interrupt
-    if (!err_reqinfo_v)
-        generate_interrupt(intrpt);
 }
-
-#if (IOPMP_MFR_EN)
-/**
-  * @brief Sets the corresponding bit in the error subsequent violations (SV) structure for a given RRID.
-  *
-  * @param rrid Resource Record ID (RRID) whose corresponding bit needs to be set in the SV structure.
-  */
-void setRridSv(uint16_t rrid) {
-    err_svs.sv[rrid/16].svw |= (1 << (rrid % 16));
-}
-
-/**
-  * @brief Checks if the corresponding bit in the error subsequent violations (SV) structure is set for a given RRID.
-  *
-  * @param rrid Resource Record ID (RRID) to check in the SV structure.
-  * @return int Returns 1 if the bit corresponding to the RRID is set, otherwise returns 0.
-  */
-int checkRridSv(uint16_t rrid) {
-    return (err_svs.sv[rrid/16].svw >> (rrid % 16)) & 0x1;
-}
-#endif
