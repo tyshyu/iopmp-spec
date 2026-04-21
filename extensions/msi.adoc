@@ -13,3 +13,4 @@ The bit `msi_sel` in register `ERR_CFG` (<<#REG_EXT_ERR_CFG,Error Configuration 
 `ERR_CFG.msi_sel` can be programmable or hardwired.
 
 The bit `msi_werr` in register `ERR_INFO` (<<#REG_EXT_ERR_INFO,Error Information with All Extensions>>) indicates whether a write access to trigger an IOPMP-originated MSI has failed. It is asserted when the write access to trigger an IOPMP-originated MSI has failed. When it's not available, it must be zero. Writing 1 to `ERR_INFO.msi_werr` clears the bit.
+The bit can be implemented when `HWCFG0.no_err_rec` is 1.
