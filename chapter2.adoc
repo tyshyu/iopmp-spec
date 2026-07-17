@@ -82,7 +82,7 @@ A memory domain may have an IOPMP entry with index &#8805; `HWCFG1.entry_num` du
 ====
 
 When an RRID is associated with a memory domain, it is also inherently associated with all the entries that belong to that memory domain.
-<<EXAMPLE_RRID2ENTRY>> illustrates an example of relations between RRIDs, memory domains, and IOPMP entries. In the example, RRID 0 is associated with entry 0, 1, 2, 5, 6, and RRID 1 is associated with entry 0, 1, 2, 3, 4.
+<<EXAMPLE_RRID2ENTRY>> illustrates an example of relations between RRIDs, memory domains, and IOPMP entries. In the example, RRID 0 is associated with entry 0, 1, 2, 3, 4, and RRID 1 is associated with entry 0, 1, 2, 5, 6.
 
 [#EXAMPLE_RRID2ENTRY]
 .An example of relations between RRIDs, memory domains, and IOPMP entries.
@@ -180,7 +180,7 @@ The error capture record maintains the specifics of the first illegal access det
 * no bus error is returned.
 
 An error capture only occurs when there is no pending error, that is, `ERR_INFO.v` = ‘0’. If a pending error exists (`v` = ‘1’), the record will not be updated, even if a new illegal access is detected. In other words, `v`  indicates whether the content of the capture record is valid and should be intentionally cleared in order to capture subsequent illegal accesses. Software can write 1 to the bit to clear it.
-The error capture record is optional.
+The error capture record ((`ERR_INFO.ttype`, `ERR_INFO.etype`, `ERR_REQADDR`, `ERR_REQADDRH`, `ERR_REQID` and `ERR_USER(0)` ~ `ERR_USER(7)`)) is optional.
 If it is not implemented, `HWCFG0.no_err_rec` must be wired to one.
 It is possible to implement the error capture record without the error entry index record (`ERR_REQID.eid`).
 In this case, `eid` must be wired to 0xffff.

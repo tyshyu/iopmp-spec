@@ -76,6 +76,7 @@ The `RRIDSCP` register comprises two fields: a 2-bit `RRIDSCP.op` and a field fo
 [#FAULTING_STALLED_TRANSACTIONS]
 ==== Faulting stalled transactions
 Faulting stalled transactions can be allowed. To allow faulting over stalling when an IOPMP cannot accommodate more stalled transactions, such as when the receiver port lacks a buffer for transaction storage, set bit `stall_violation_en` in register `ERR_CFG` (<<#REG_EXT_ERR_CFG,Error Configuration with All Extensions>>) to 1 before Step 1 of <<#PROGRAMMING_STEPS, Programming Steps>>. If any transaction is faulted due to the stalled transactions, the error information shall be logged in `ERR_INFO` (<<#REG_EXT_ERR_INFO,Error Information with All Extensions>>), where `ERR_INFO.etype` = 0x07 (error due to stalled transactions). The procedure for faulting checking transactions is identical to Steps 1-3 of <<#PROGRAMMING_STEPS, Programming Steps>>, except that, besides stalling and delaying the transactions, transactions can be faulted and cannot be resumed if the IOPMP can't handle more stalled transactions.
+If `stall_violation_en` is updated during Steps 1 to 3 of <<#PROGRAMMING_STEPS, Programming Steps>>, the behavior is undefined.
 
 [NOTE]
 ====
@@ -95,6 +96,8 @@ In Step 1 of <<#PROGRAMMING_STEPS, Programming Steps>>, `MDSTALL` can be written
 
 After `MDSTALL` and all `RRIDSCP` are written, the action to stall desired transactions may not take effect immediately in some implementations in which the subsequent setting updates (Step 2) could affect the transactions still under checking. To determine whether the action takes effect, software can read back and check the bit `MDSTALL.is_busy`, which is in the same location as `MDSTALL.exempt` on a write. `is_busy` = 0 indicates it has taken effect or no previous write; otherwise, it has not. A new writing `RRIDSCP` may temporarily switch `is_busy` to 1 and then switch to 0 at some time.
 `is_busy` can be wired to 0 if any `MDSTALL` and `RRIDSCP` writing won't cause a race condition of the transactions still under checking and the subsequent setting updates.
+Updating `stall_violation_en` should be before Step 1.
+If `stall_violation_en` is updated during Steps 1 to 3, the behavior is undefined.
 
 Based on <<#PROGRAMMING_STEPS, Programming Steps>>, complete steps to program an IOPMP should be followed.
 
@@ -127,6 +130,8 @@ If whole `MDSTALL` is not implemented, `MDSTALL`, `MDSTALLH`, `RRIDSCP` and `ERR
 
 If `RRIDSCP` is not implemented, it always returns zero. Software can test if it is implemented by writing a zero and then reading it back. Any IOPMP implementing `RRIDSCP` should not return a zero in `RRIDSCP.stat` in this case.
 
-It is unnecessary to allow every implemented RRID to be selectable by `RRIDSCP.rrid`. If an unimplemented or unselectable RRID is written into `RRIDSCP.rrid`, it returns `RRIDSCP.stat` = 3.
+It is unnecessary to allow every implemented RRID to be selectable by `RRIDSCP.rrid`. If `RRIDSCP.rrid` stores or returns an unimplemented or unselectable RRID, it returns `RRIDSCP.stat` = 3.
+
+To handle reserved operation of `RRIDSCP.op` (0x3), IOPMP can ignore corresponding writes or update `RRIDSCP.rrid` only.
 
 `ERR_CFG.stall_violation_en` is a WARL field so it can be programmable or fixed.
