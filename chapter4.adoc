@@ -19,7 +19,7 @@ If an optional register is not implemented, the behavior is implementation-depen
 |0x002C | `ENTRYOFFSET` |Indicates the internal address offsets of each table.
 
 3+|{set:cellbgcolor:#D3D3D3} Configuration Protection
-|{set:cellbgcolor:#FFFFFF} 
+|{set:cellbgcolor:#FFFFFF}
  0x0040 | `MDLCK`    | Lock register for lower MDs in SRCMD Table.
 |0x0044 | `MDLCKH`   | (Optional) lock register for higher MDs in SRCMD Table.
 |0x0048 | `MDCFGLCK` | Lock register for MDCFG Table.
@@ -50,7 +50,7 @@ If an optional register is not implemented, the behavior is implementation-depen
 3+|{set:cellbgcolor:#D3D3D3} Entry Array, _i_ =0...`HWCFG1.entry_num`-1
 | {set:cellbgcolor:#FFFFFF}
   `ENTRYOFFSET` + (_i_) × 16 | `ENTRY_ADDR(_i_)`| Bit 33:2 of address (region) for entry _i_.
-| `ENTRYOFFSET` + 0x4 + (_i_) × 16 |`ENTRY_ADDRH(_i_)` | (Optional) bit 65:34 of the address (region) for entry _i_. 
+| `ENTRYOFFSET` + 0x4 + (_i_) × 16 |`ENTRY_ADDRH(_i_)` | (Optional) bit 65:34 of the address (region) for entry _i_.
 | `ENTRYOFFSET` + 0x8 + (_i_) × 16 |`ENTRY_CFG(_i_)` |The configuration of entry _i_.
 | `ENTRYOFFSET` + 0xC + (_i_) × 16 |`ENTRY_USER_CFG(_i_)` |(Optional) user-defined attributes.
 |===
@@ -111,28 +111,28 @@ See xref:APPLICATION_NOTE[xrefstyle=full].
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field    |Bits   |R/W    |Default    |Description
-|`user`   |31:0   |IMP    |IMP        |(Optional) user-defined registers  
+|`user`   |31:0   |IMP    |IMP        |(Optional) user-defined registers
 |===
 
 ==== Entry Array Offset (`ENTRYOFFSET`)
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field    |Bits   |R/W    |Default    |Description
-|`offset` |31:0   |R      |IMP        |Indicate the offset address of the IOPMP array from the base of an IOPMP instance, a.k.a. the address of `VERSION`. Note: the offset is a signed number in two's complement representation. That is, the IOPMP array can be placed in front of `VERSION`.  
+|`offset` |31:0   |R      |IMP        |Indicate the offset address of the IOPMP array from the base of an IOPMP instance, a.k.a. the address of `VERSION`. Note: the offset is a signed number in two's complement representation. That is, the IOPMP array can be placed in front of `VERSION`.
 |===
 
 === Configuration Protection Registers
 
 ==== Memory Domain Lock (`MDLCK` and `MDLCKH`)
-`MDLCK` is a register with a bitmap field to indicate which lower MDs are locked in the SRCMD Table. 
+`MDLCK` is a register with a bitmap field to indicate which lower MDs are locked in the SRCMD Table.
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field      |Bits       |R/W    |Default    |Description
-|`l`        |0:0        |W1SS   |IMP        | Lock bit to `MDLCK` and `MDLCKH` register.
-|`md`       |31:1       |WARL   |IMP        | `md[_m_]` is sticky to 1 and indicates if `SRCMD_EN(_s_).md[_m_]` is locked for all RRID _s_. 
+|`l`        |0:0        |W1SS   |IMP        | `MDLCK.l` lock bit for the `MDLCK` and `MDLCKH` registers.
+|`md`       |31:1       |WARL   |IMP        | `md[_m_]` is sticky to 1 and indicates if `SRCMD_EN(_s_).md[_m_]` is locked for all RRID _s_.
 |===
 
-`MDLCKH` is a register with a bitmap field to indicate which higher MDs are locked in the SRCMD Table. 
+`MDLCKH` is a register with a bitmap field to indicate which higher MDs are locked in the SRCMD Table.
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field      |Bits       |R/W    |Default    |Description
@@ -145,8 +145,8 @@ See xref:APPLICATION_NOTE[xrefstyle=full].
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field     |Bits       |R/W    |Default    |Description
-|`l`       |0:0        |W1SS   |IMP        | Lock bit to `MDCFGLCK` register.
-|`f`       |6:1        |WARL   |IMP        | Indicate the number of locked MDCFG entries - `MDCFG(_m_)` is locked for _m_ < `f`. 
+|`l`       |0:0        |W1SS   |IMP        | `MDCFGLCK.l` lock bit for the `MDCFGLCK` register.
+|`f`       |6:1        |WARL   |IMP        | Indicate the number of locked MDCFG entries - `MDCFG(_m_)` is locked for _m_ < `f`.
 On write, the field only accepts the value larger than the previous value until the next reset cycle; otherwise, there is no effect.
 If `f` > `HWCFG0.md_num`, all MDCFG entries are locked.
 |`rsv`     |31:7       |ZERO   |0          | Must be zero on write, reserved for future
@@ -158,7 +158,7 @@ If `f` > `HWCFG0.md_num`, all MDCFG entries are locked.
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field   |Bits       |R/W    |Default    |Description
-|`l`     |0:0        |W1SS   |IMP        | Lock bit to `ENTRYLCK` register.
+|`l`     |0:0        |W1SS   |IMP        | `ENTRYLCK.l` lock bit for the `ENTRYLCK` register.
 |`f`     |16:1       |WARL   |IMP        | Indicate the number of locked IOPMP entries - `ENTRY_ADDR(_i_)`, `ENTRY_ADDRH(_i_)`, and `ENTRY_CFG(_i_)` are locked for _i_ < `f`. On write, the field only accepts the value larger than the previous value until the next reset cycle; otherwise, there is no effect.
 If `f` > `HWCFG1.entry_num`, all IOPMP entries are locked.
 |`rsv`   |31:17      |ZERO   |0          | Must be zero on write, reserved for future
@@ -166,15 +166,19 @@ If `f` > `HWCFG1.entry_num`, all IOPMP entries are locked.
 
 === Error Capture Registers
 
+Error status bits that are cleared by software use the RW1C convention unless otherwise specified.
+RW1C allows software to acknowledge selected pending status bits by writing 1, while writing 0 leaves the status unchanged.
+This convention helps avoid accidentally clearing adjacent status bits during read-modify-write sequences and prevents software from writing arbitrary values into hardware-generated status fields.
+
 ==== Error Configuration (`ERR_CFG`)
 `ERR_CFG` is a read/write WARL register used to configure the global error reporting behavior on an IOPMP violation.
 
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field  |Bits   |R/W    |Default    |Description
-|`l`    |0:0    |W1SS   |IMP        |Lock bit to `ERR_CFG` register.
+|`l`    |0:0    |W1SS   |IMP        |`ERR_CFG.l` lock bit for the `ERR_CFG` register.
 |`ie`   |1:1    |WARL   |IMP        |Enable the interrupt of the IOPMP rule violation.
-|`rs`   |2:2    |WARL   |IMP       a| 
+|`rs`   |2:2    |WARL   |IMP       a|
 
 To suppress an error response on an IOPMP rule violation.
 
@@ -188,8 +192,8 @@ To suppress an error response on an IOPMP rule violation.
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field     |Bits   |R/W   |Default |Description
-|`v`       |0:0    |RW1C  |0       | Indicate if the illegal capture recorder (`ERR_REQID`, `ERR_REQADDR`, `ERR_REQADDRH`, `ERR_INFO.ttype`, and `ERR_INFO.etype`) has a valid content and will keep the content until the bit is cleared. An interrupt will be triggered if a violation is detected and related interrupt enable/suppression configure bits are not disabled, the interrupt will keep asserted until the error valid is cleared. +
-Write 1 clears the bit, the illegal recorder reactivates and the interrupt (if enabled). Write 0 causes no effect on the bit.
+|`v`       |0:0    |RW1C  |0       | Indicates whether the illegal capture recorder (`ERR_REQID`, `ERR_REQADDR`, `ERR_REQADDRH`, `ERR_INFO.ttype`, and `ERR_INFO.etype`) contains valid information. When a violation is captured, `v` is set and remains set until software acknowledges the captured violation. The associated captured error fields are hardware-generated and read-only, so software cannot forge the captured fault context through these registers. An interrupt will be triggered if a violation is detected and related interrupt enable/suppression configure bits are not disabled, and the interrupt will remain asserted until `v` is cleared. +
+Writing 1 to `ERR_INFO.v` acknowledges the captured violation, clears `v`, reactivates the illegal recorder, and deasserts the interrupt if no other interrupt condition remains pending. Writing 0 causes no effect on the bit.
 |`ttype`   |2:1    |R     |0      a|Indicated the transaction type of the first captured violation
 
 - 0x00 = reserved
@@ -197,7 +201,7 @@ Write 1 clears the bit, the illegal recorder reactivates and the interrupt (if e
 - 0x02 = write access/AMO
 - 0x03 = instruction fetch
 
-|`etype`   |7:4    |R     |0      a| Indicated the type of violation
+|`etype`   |7:4    |R     |0      a| Indicates the type of violation, also referred to as the error type.
 
 - 0x00 = no error
 - 0x01 = illegal read access
@@ -255,8 +259,8 @@ MDCFG Table is a lookup to specify the number of IOPMP entries that is associate
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field  |Bits       |R/W    |Default    |Description
-|`t`    |15:0       |WARL   |DC/IMP    a| Indicate the encoding the range of memory domain _m_. An IOPMP entry with index _j_ belongs to MD _m_                 
-      
+|`t`    |15:0       |WARL   |DC/IMP    a| Indicate the encoding the range of memory domain _m_. An IOPMP entry with index _j_ belongs to MD _m_
+
 - If `MDCFG(_m_-1).t` ≤ _j_ < `MDCFG(_m_).t`, where m > 0.
 - If _j_ < `MDCFG(0).t` where m = 0.
 - If `MDCFG(_m_-1).t` > `MDCFG(_m_).t`, then MDCFG Table is improperly programmed. Please refer <<#MDCFG_TABLE, MDCFG Table>> for IOPMP behavior of improperly programming.
@@ -295,14 +299,14 @@ A complete 64-bit address consists of these two registers, `ENTRY_ADDR` and `ENT
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field  |Bits       |R/W    |Default  |Description
-|`addr` |31:0       |WARL   |DC       |The physical address[33:2] of protected memory region. 
+|`addr` |31:0       |WARL   |DC       |The physical address[33:2] of protected memory region.
 |===
 
 `ENTRY_ADDRH(_i_)` is bit 65:34 of address (region) for entry _i_, _i_ =0...`HWCFG1.entry_num`-1
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field   |Bits      |R/W    |Default |Description
-|`addrh` |31:0      |WARL   |DC      |The physical address[65:34] of protected memory region. 
+|`addrh` |31:0      |WARL   |DC      |The physical address[65:34] of protected memory region.
 |===
 
 ==== Entry _i_ Configuration (`ENTRY_CFG(_i_)`)
@@ -310,7 +314,7 @@ A complete 64-bit address consists of these two registers, `ENTRY_ADDR` and `ENT
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field   |Bits       |R/W    |Default    |Description
-|`r`     |0:0        |WARL   |DC         |The read permission to protected memory region 
+|`r`     |0:0        |WARL   |DC         |The read permission to protected memory region
 |`w`     |1:1        |WARL   |DC         |The write permission to the protected memory region
 |`x`     |2:2        |WARL   |DC         |The instruction fetch permission to the protected memory region
 |`a`     |4:3        |WARL   |DC        a|The address mode of the IOPMP entry
@@ -330,5 +334,5 @@ Bits `r`, `w`, and `x`, grant read, write, or instruction fetch permission, resp
 [cols="<2,<1,<1,<1,<6",options="header"]
 |===
 |Field  |Bits       |R/W    |Default    |Description
-|`im`   |31:0       |IMP    |IMP        |User customized field 
+|`im`   |31:0       |IMP    |IMP        |User customized field
 |===
