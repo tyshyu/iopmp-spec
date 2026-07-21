@@ -122,6 +122,8 @@ When the MDCFG Table has an improper setting, the resulting association of IOPMP
 * an entry must belong to at most one memory domain; and
 * the index of an entry in a lower-indexed memory domain must be lower than that in a higher-indexed memory domain.
 
+Examples of implementation-dependent behaviors for handling improper MDCFG settings are provided in <<#IMPROPER_MDCFG_REFERENCE,Reference Behaviors of Improper Settings on MDCFG Table>>.
+
 [NOTE]
 ====
 For portability, programmers should ensure the MDCFG Table has a proper setting during the runtime. In the case that the process of programming or initializing the MDCFG Table causes an improper setting to occur transiently, software can deassociate effected MDs in SRCMD table before programming MDCFG table to avoid security issues. Even though the procedure may introduce extra steps, the table is not subject to change at such a high frequency as to hurt overall performance. Thus, the specification requires programmers to maintain proper settings instead of requiring specific hardware behaviors on improper settings.
