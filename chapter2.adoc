@@ -52,7 +52,7 @@ An IOPMP has one or multiple requester ports, one or multiple receiver ports and
 === IOPMP Entry and IOPMP Entry Array
 The IOPMP entry array, contains `HWCFG1.entry_num` IOPMP entries, where the value zero is reserved. Each entry, starting from an index of zero, includes a specified memory region and the corresponding permissions.
 
-For an entry indexed by _i_, `ENTRY_ADDR(_i_)`, `ENTRY_ADDRH(_i_)` and `ENTRY_CFG(_i_).a` encode the memory region in the same way as the RISC-V PMP. `ENTRY_ADDR(_i_)` and `ENTRY_ADDRH(_i_)` are the encoded address for the IOPMP with addresses greater than 34 bits. For addresses less than and equal to 34 bits, only `ENTRY_ADDR(_i_)` is in use. To determine whether `ENTRY_ADDRH(_i_)` are implemented, software can check `HWCFG0.addrh_en`. Please refer <<#HWCFG0,Hardware Configuration 0>> for more details of `HWCFG0.addrh_en`. `ENTRY_CFG(_i_).a` encodes the address-matching mode of the associated address registers; the supported values are OFF, NA4, NAPOT, and TOR. Please refer to the RISC-V privileged spec cite:[PrivISA] for the details of the encoding schemes. `HWCFG0.tor_en` = 1 indicates the IOPMP supports TOR address-matching mode.
+For an entry indexed by _i_, `ENTRY_ADDR(_i_)`, `ENTRY_ADDRH(_i_)`, and `ENTRY_CFG(_i_).a` together encode the memory region using the address-matching modes defined by the RISC-V PMP. `ENTRY_ADDR(_i_)` and `ENTRY_ADDRH(_i_)` hold the encoded address for an IOPMP with addresses greater than 34 bits. For addresses less than or equal to 34 bits, only `ENTRY_ADDR(_i_)` is used. To determine whether `ENTRY_ADDRH(_i_)` is implemented, software can check `HWCFG0.addrh_en`. Please refer to <<#HWCFG0,Hardware Configuration 0>> for more details about `HWCFG0.addrh_en`. `ENTRY_CFG(_i_).a` selects the address-matching mode from OFF, NA4, NAPOT, and TOR. Please refer to the RISC-V privileged specification cite:[PrivISA] for details of the encoding schemes. `HWCFG0.tor_en` = 1 indicates that the IOPMP supports the TOR address-matching mode.
 
 `ENTRY_CFG(_i_).r/w/x` indicate the read access, write access, and instruction fetch permission and they are WARL. That is, an implementation can decide which bits are programmable or hardwired and which bit combinations are unwanted.
 
@@ -101,7 +101,7 @@ The SRCMD Table is an array indexed by RRID that associates each requester with 
 
 The register `SRCMD_EN(_s_)` must be implemented for each existing RRID _s_. Every bit in the 31-bit field `SRCMD_EN(_s_).md` indicates a memory domain. Bit _j_ in `SRCMD_EN(_s_).md` indicates if MD _j_ is associated with RRID _s_. If the number of MDs is more than 31, the register `SRCMD_ENH(_s_)` and its 32-bit field `SRCMD_ENH(_s_).mdh` can be implemented to support up to 63 memory domains. Bit _j_ in `SRCMD_ENH(_s_).mdh` indicates if MD (_j_ + 31) is associated with RRID _s_. For unimplemented memory domains, the corresponding bits should be hardwired read-only zero.
 
-Every `SRCMD_EN(_s_)` has 1-bit field `l` for SRCMD Table protection. The bit is described in <<#SRCMD_PROTECTION, SRCMD Table Protection>>.
+Every `SRCMD_EN(_s_)` has a 1-bit lock field, `SRCMD_EN(_s_).l`, which locks `SRCMD_EN(_s_)` and `SRCMD_ENH(_s_)`, if implemented. The lock behavior is described in <<#SRCMD_PROTECTION, SRCMD Table Protection>>.
 
 
 [#MDCFG_TABLE]
@@ -145,8 +145,6 @@ IOPMP entries are prioritized according to their index values. Entries with lowe
 
 NOTE: The specification uses priority-based entry matching to provide deterministic behavior. Entries with lower indices have higher priority and take precedence when multiple entries match a transaction. Non-prioritized entries are supported for specific use cases, with their detailed behavior documented in the application notes.
 
-The error types referenced in this section are summarized in <<#ERROR_TYPES,Summary of error types>>.
-
 An entry qualifies as a matching entry for an incoming transaction if:
 
 * Its region covers any byte of the transaction,
@@ -186,7 +184,7 @@ IOPMP can trigger an interrupt on an access violation. The `ERR_CFG.ie` bit serv
 
 Transactions that violate the IOPMP rule will by default yield a bus error. The bus error response behavior on an IOPMP violation can be configured globally via the `ERR_CFG` register. The IOPMP will signal the bus to the presence of a violation but will suppress the bus error if `ERR_CFG.rs` is implemented and set to 1 on a violation. User-defined suppression behavior allows, for example, a read response of 0x0.
 
-The error type (`ERR_INFO.etype`) identifies the cause of an illegal transaction. For error type = "User-defined error" (0x0E, 0x0F), behavior of interrupt and error response is user-defined.
+The error type (`ERR_INFO.etype`) identifies the cause of an illegal transaction. The error-type encodings are summarized in <<#ERROR_TYPES,Summary of error types>>. For error type = "User-defined error" (0x0E, 0x0F), behavior of interrupt and error response is user-defined.
 
 The error capture record maintains the specifics of the first illegal access detected, except for the condition:
 
