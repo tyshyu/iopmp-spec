@@ -52,16 +52,14 @@ An IOPMP has one or multiple requester ports, one or multiple receiver ports and
 === IOPMP Entry and IOPMP Entry Array
 The IOPMP entry array, contains `HWCFG1.entry_num` IOPMP entries, where the value zero is reserved. Each entry, starting from an index of zero, includes a specified memory region and the corresponding permissions.
 
-For an entry indexed by _i_, `ENTRY_ADDR(_i_)`, `ENTRY_ADDRH(_i_)` and `ENTRY_CFG(_i_).a` encode the memory region in the same way as the RISC-V PMP. `ENTRY_ADDR(_i_)` and `ENTRY_ADDRH(_i_)` are the encoded address for the IOPMP with addresses greater than 34 bits. For addresses less than and equal to 34 bits, only `ENTRY_ADDR(_i_)` is in use. To determine whether `ENTRY_ADDRH(_i_)` are implemented, software can check `HWCFG0.addrh_en`. Please refer <<#HWCFG0,Hardware Configuration 0>> for more details of `HWCFG0.addrh_en`. `ENTRY_CFG(_i_).a` is the address mode, which are OFF, NA4, NAPOT, and TOR. Please refer to the RISC-V privileged spec cite:[PrivISA] for the details of the encoding schemes. `HWCFG0.tor_en` = 1 indicates the IOPMP supports TOR address mode.
+For an entry indexed by _i_, `ENTRY_ADDR(_i_)`, `ENTRY_ADDRH(_i_)` and `ENTRY_CFG(_i_).a` encode the memory region in the same way as the RISC-V PMP. `ENTRY_ADDR(_i_)` and `ENTRY_ADDRH(_i_)` are the encoded address for the IOPMP with addresses greater than 34 bits. For addresses less than and equal to 34 bits, only `ENTRY_ADDR(_i_)` is in use. To determine whether `ENTRY_ADDRH(_i_)` are implemented, software can check `HWCFG0.addrh_en`. Please refer <<#HWCFG0,Hardware Configuration 0>> for more details of `HWCFG0.addrh_en`. `ENTRY_CFG(_i_).a` encodes the address-matching mode of the associated address registers; the supported values are OFF, NA4, NAPOT, and TOR. Please refer to the RISC-V privileged spec cite:[PrivISA] for the details of the encoding schemes. `HWCFG0.tor_en` = 1 indicates the IOPMP supports TOR address-matching mode.
 
 `ENTRY_CFG(_i_).r/w/x` indicate the read access, write access, and instruction fetch permission and they are WARL. That is, an implementation can decide which bits are programmable or hardwired and which bit combinations are unwanted.
-
-`ENTRY_CFG(_i_)` contains the basic permission fields for read, write, instruction fetch and address mode configuration.
 
 Any entry with index &#8805; `HWCFG1.entry_num` is not available. That is,
 
 * Registers of the entry are not implemented.
-* Address mode of the entry is treated as OFF when the IOPMP retrieves the entry in permission checks.
+* Address-matching mode of the entry is treated as OFF when the IOPMP retrieves the entry in permission checks.
 
 === Memory Domain
 A Request-Role-ID (RRID) serves as an abstract identifier for a transaction requester, representing one or more requesters that are assigned an identical set of potential access permissions. Conversely, a Memory Domain (MD) is an abstract construct representing a transaction destination. Its primary purpose is to logically group a set of memory regions that share a common functional or security objective, thereby simplifying the subsequent management. MDs are indexed starting from zero.
@@ -139,8 +137,8 @@ NOTE: Whether an RRID is legal is implementation-dependent, even though it < `HW
 
 For a legal RRID, the IOPMP determines the applicable entries in the following order:
 
-* The IOPMP uses the RRID to look up the SRCMD Table and identify the memory domains associated with the requester.
-* The IOPMP uses the associated memory domains to look up the MDCFG Table and identify the entries belonging to those memory domains.
+* The IOPMP uses the RRID to look up the SRCMD Table and identifies the memory domains associated with the requester.
+* The IOPMP uses the associated memory domains to look up the MDCFG Table and identifies the entries belonging to those memory domains.
 * The IOPMP applies the entry priority and matching rules below to those entries.
 
 IOPMP entries are prioritized according to their index values. Entries with lower indices are assigned a higher priority. When multiple entries match a transaction, the entry with the lowest index (highest priority) takes precedence.
