@@ -133,19 +133,21 @@ For portability, programmers should ensure the MDCFG Table has a proper setting 
 === Priority and Matching Logic
 The IOPMP uses entry-based permission checking to determine whether transactions are allowed or denied.
 
+The error type identifies the cause of an illegal transaction and is recorded in `ERR_INFO.etype` when the error capture record is implemented. Error reactions are described in <<#ERROR_REACTIONS,Error Reactions>>, and the error-type encodings are summarized in <<#ERROR_TYPES,Summary of error types>>.
+
 When a transaction arrives at an IOPMP, the IOPMP first checks whether the RRID carried by the transaction is legal. If the RRID is illegal, the transaction is illegal with error type = "Unknown RRID" (0x06).
 
 NOTE: Whether an RRID is legal is implementation-dependent, even though it < `HWCFG1.rrid_num`.
 
 For a legal RRID, the IOPMP determines the applicable entries in the following order:
 
-* The IOPMP uses the RRID to look up the SRCMD Table and identifies the memory domains associated with the requester.
-* The IOPMP uses the associated memory domains to look up the MDCFG Table and identifies the entries belonging to those memory domains.
-* The IOPMP applies the entry priority and matching rules below to those entries.
+1. The IOPMP looks up the SRCMD Table using the RRID to identify the memory domains associated with the requester.
+2. The IOPMP looks up the MDCFG Table using the associated memory domains to identify the entries belonging to those memory domains.
+3. The IOPMP applies the entry priority and matching rules below to those entries.
 
 IOPMP entries are prioritized according to their index values. Entries with lower indices are assigned a higher priority. When multiple entries match a transaction, the entry with the lowest index (highest priority) takes precedence.
 
-NOTE: The specification uses priority-based entry matching to provide deterministic behavior. Entries with lower indices have higher priority and take precedence when multiple entries match a transaction. Non-prioritized entries are supported for specific use cases, with their detailed behavior documented in the application notes.
+NOTE: The specification uses priority-based entry matching to provide deterministic behavior. Entries with lower indices have higher priority and take precedence when multiple entries match a transaction. Non-prioritized entries are supported for specific use cases, with their detailed behavior documented in <<#NON_PRIORITY_ENTRIES,Non-priority IOPMP entries>>.
 
 An entry qualifies as a matching entry for an incoming transaction if:
 
@@ -173,6 +175,7 @@ Some AMO implementations of I/O agents are using a non-atomic read-modify-write 
 .an example block diagram of an IOPMP. It illustrates the checking flow of an IOPMP. This IOPMP takes three inputs: RRID, the transaction type (read/write/instruction fetch), and the request range (address/len). It first looks up the SRCMD Table according to the RRID carried by the incoming transaction to retrieve associated MD indexes. By the MD indexes, the IOPMP looks up the MDCFG Table to get the belonging entry indexes. The final step checks the access right according to the above entry indexes and corresponding permissions. An interrupt, an error response, and/or a record is generated once the transaction fails the permission check in the step.
 image::images/iopmp_unit_block_diagram.png[]
 
+[#ERROR_REACTIONS]
 === Error Reactions
 Upon detecting an illegal transaction, the IOPMP could initiate one or more of the following actions:
 
@@ -186,7 +189,7 @@ IOPMP can trigger an interrupt on an access violation. The `ERR_CFG.ie` bit serv
 
 Transactions that violate the IOPMP rule will by default yield a bus error. The bus error response behavior on an IOPMP violation can be configured globally via the `ERR_CFG` register. The IOPMP will signal the bus to the presence of a violation but will suppress the bus error if `ERR_CFG.rs` is implemented and set to 1 on a violation. User-defined suppression behavior allows, for example, a read response of 0x0.
 
-The error type (`ERR_INFO.etype`) identifies the cause of an illegal transaction. The error-type encodings are summarized in <<#ERROR_TYPES,Summary of error types>>. For error type = "User-defined error" (0x0E, 0x0F), behavior of interrupt and error response is user-defined.
+For error type = "User-defined error" (0x0E, 0x0F), behavior of interrupt and error response is user-defined.
 
 The error capture record maintains the specifics of the first illegal access detected, except for the condition:
 
