@@ -34,7 +34,7 @@ endif
 CPP	= $(CC) -E
 AS	= $(CC)
 
-CFLAGS	= -g -Wall -Werror -Wsign-compare -ffreestanding -fno-stack-protector
+CFLAGS	= -g -Wall -Wextra -Werror -ffreestanding -fno-stack-protector
 CFLAGS	+= -fno-strict-aliasing -ffunction-sections -fdata-sections
 CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 CFLAGS	+= -fno-asynchronous-unwind-tables -fno-unwind-tables

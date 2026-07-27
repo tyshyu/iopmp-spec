@@ -755,6 +755,10 @@ static bool generic_poll_mdstall(IOPMP_t *iopmp, bool polling,
 {
     uint32_t mdstall;
 
+    /* MDSTALL.is_busy covers both directions. Kept for models that tell them
+     * apart */
+    (void)stall_or_resume;
+
     if (polling) {
         __polling_mdstall(iopmp);
         return true;
@@ -1215,6 +1219,8 @@ enum iopmp_error srcmd_fmt_0_lock_srcmd_table(IOPMP_t *iopmp, uint32_t rrid,
 {
     uint64_t srcmd_en_64;
 
+    (void)mdidx;    /* SRCMD_FMT=0 locks the SRCMD table per RRID */
+
     srcmd_en_64  = read_srcmd_en_64(iopmp, rrid);
     srcmd_en_64 |= MAKE_FIELD_64(1, IOPMP_SRCMD_EN_L);
     write_srcmd_en_64(iopmp, rrid, srcmd_en_64);
@@ -1226,6 +1232,8 @@ enum iopmp_error srcmd_fmt_2_lock_srcmd_table(IOPMP_t *iopmp, uint32_t rrid,
                                               uint32_t mdidx)
 {
     uint64_t mds = (uint64_t)1 << mdidx;
+
+    (void)rrid;     /* SRCMD_FMT=2 locks the SRCMD table per MD */
 
     return srcmd_fmt_0_2_set_md_lock(iopmp, &mds, false);
 }

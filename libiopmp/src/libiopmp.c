@@ -1435,7 +1435,6 @@ enum iopmp_error iopmp_set_md_entry_num(IOPMP_t *iopmp, uint32_t *md_entry_num)
 /**
  * \brief Encode IOPMP NAPOT entry from given memory region and flags
  *
- * \param[in] iopmp             The IOPMP instance
  * \param[out] entry            The entry to be output
  * \param[in] addr              Address of the memory region
  * \param[in] size              Size of the memory region
@@ -1445,7 +1444,7 @@ enum iopmp_error iopmp_set_md_entry_num(IOPMP_t *iopmp, uint32_t *md_entry_num)
  *
  * \return 1
  */
-static int __encode_entry_pow2(IOPMP_t *iopmp, struct iopmp_entry *entry,
+static int __encode_entry_pow2(struct iopmp_entry *entry,
                                uint64_t addr, uint64_t size,
                                enum iopmp_entry_flags hw_flags,
                                enum iopmp_entry_flags sw_flags,
@@ -1479,9 +1478,7 @@ static int __encode_entry_pow2(IOPMP_t *iopmp, struct iopmp_entry *entry,
 /**
  * \brief Encode IOPMP TOR entries from given memory region and flags
  *
- * \param[in] iopmp             The IOPMP instance
  * \param[out] entries          The array of entry to be output
- * \param[in] num_entry         Number of entries in \p entries
  * \param[in] addr              Address of the memory region
  * \param[in] size              Size of the memory region
  * \param[in] hw_flags          HW flags of the entry for this memory region
@@ -1491,7 +1488,7 @@ static int __encode_entry_pow2(IOPMP_t *iopmp, struct iopmp_entry *entry,
  * \retval 1 if successes and the memory region is encoded as first TOR entry
  * \retval 2 if successes and the memory region is encoded as two TOR entries
  */
-static int __encode_entry_tor(IOPMP_t *iopmp, struct iopmp_entry *entries,
+static int __encode_entry_tor(struct iopmp_entry *entries,
                               uint64_t addr, uint64_t size,
                               enum iopmp_entry_flags hw_flags,
                               enum iopmp_entry_flags sw_flags,
@@ -1613,8 +1610,8 @@ enum iopmp_error iopmp_encode_entry(IOPMP_t *iopmp, struct iopmp_entry *entries,
 
     /* NA4 or NAPOT region */
     if (is_napot(addr, size) && !(sw_flags & IOPMP_ENTRY_FORCE_TOR))
-        return __encode_entry_pow2(iopmp, entries, addr, size, hw_flags,
-                                   sw_flags, private_data);
+        return __encode_entry_pow2(entries, addr, size, hw_flags, sw_flags,
+                                   private_data);
 
     /* TOR region */
     if (!iopmp->tor_en)
@@ -1627,7 +1624,7 @@ enum iopmp_error iopmp_encode_entry(IOPMP_t *iopmp, struct iopmp_entry *entries,
     if ((sw_flags & IOPMP_ENTRY_FIRST_TOR) && (addr != 0))
         return IOPMP_ERR_NOT_ALLOWED;
 
-    return __encode_entry_tor(iopmp, entries, addr, size, hw_flags, sw_flags,
+    return __encode_entry_tor(entries, addr, size, hw_flags, sw_flags,
                               private_data);
 }
 
