@@ -450,7 +450,7 @@ static void detect_stall_function(IOPMP_t *iopmp)
     }
 }
 
-void detect_entry_addr_bits(IOPMP_t *iopmp)
+enum iopmp_error detect_entry_addr_bits(IOPMP_t *iopmp)
 {
     uint64_t val = 0;
     uintptr_t entry;
@@ -481,6 +481,12 @@ void detect_entry_addr_bits(IOPMP_t *iopmp)
         break;
     }
 
+    /* Every entry is locked or in use, so nothing can be probed. iopmp_ctzll()
+     * below is undefined for zero, and a zero entry_addr_bits would reject
+     * every address handed to iopmp_encode_entry() anyway */
+    if (!val)
+        return IOPMP_ERR_NOT_AVAILABLE;
+
     iopmp->entry_addr_bits = val;
 
     /*
@@ -491,6 +497,8 @@ void detect_entry_addr_bits(IOPMP_t *iopmp)
      * 2^(G+2) bytes.
      */
     iopmp->granularity = (uint32_t)1 << (iopmp_ctzll(val) + 2);
+
+    return IOPMP_OK;
 }
 
 /******************************************************************************/
@@ -1579,6 +1587,7 @@ __init_common(IOPMP_t *iopmp, uintptr_t addr,
     uint32_t data, hwcfg0, hwcfg3;
     uint8_t hwcfg3_srcmd_fmt, hwcfg3_mdcfg_fmt;
     bool hwcfg2_en, hwcfg3_en;
+    enum iopmp_error ret;
 
     /* Read HWCFG0 and HWCFG3 first to check srcmd_fmt and mdcfg_fmt */
     hwcfg0 = io_read32(addr + IOPMP_HWCFG0_BASE);
@@ -1722,7 +1731,9 @@ __init_common(IOPMP_t *iopmp, uintptr_t addr,
     detect_stall_function(iopmp);
 
     /* Detect implemented bits of ENTRY_ADDR(H) */
-    detect_entry_addr_bits(iopmp);
+    ret = detect_entry_addr_bits(iopmp);
+    if (ret != IOPMP_OK)
+        return ret;
 
     /* Setup operations */
     iopmp->ops_generic = &iopmp_operations_generic;

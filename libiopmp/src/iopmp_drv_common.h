@@ -106,8 +106,12 @@ __IOPMP_IO_FUNC_ATTR void io_write32(uintptr_t addr, uint32_t val)
  * \brief Detect writable bits of ENTRY_ADDR(H) and IOPMP granularity
  *
  * \param[in] iopmp             The IOPMP instance to be detected
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_NOT_AVAILABLE if no unlocked and unused entry is available
+ *         to probe, so that neither value can be determined
  */
-void detect_entry_addr_bits(IOPMP_t *iopmp);
+enum iopmp_error detect_entry_addr_bits(IOPMP_t *iopmp);
 
 /**
  * \brief Assemble two 32-bit unsigned integers to 64-bit unsigned integer
