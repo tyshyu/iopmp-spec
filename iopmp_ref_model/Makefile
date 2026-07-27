@@ -121,18 +121,26 @@ build: $(BIN_DIR) $(LIB_DIR) $(LIBIOPMP_PREREQ)
 		echo "Executable for $(model) built successfully."; \
 	fi
 
-# Run all compiled binaries
+# Run all compiled binaries. Exits non-zero if any of them fails or is missing,
+# so that this target can be used as a regression gate.
 run:
-	@for model in $(MODELS); do \
+	@failed=""; \
+	for model in $(MODELS); do \
 		target=$${model%%:*}; \
 		binary=$(BIN_DIR)/$$target; \
 		if [ -f $$binary ]; then \
 			echo "Running $$binary..."; \
-			$$binary; \
+			if ! $$binary; then failed="$$failed $$target"; fi; \
 		else \
 			echo "Binary $$binary not found. Did you build it?"; \
+			failed="$$failed $$target"; \
 		fi; \
-	done
+	done; \
+	if [ -n "$$failed" ]; then \
+		echo "FAILED:$$failed"; \
+		exit 1; \
+	fi; \
+	echo "All binaries passed."
 
 # Display usage information
 .PHONY: help
