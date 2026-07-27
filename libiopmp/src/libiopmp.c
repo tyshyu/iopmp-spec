@@ -1366,7 +1366,7 @@ enum iopmp_error iopmp_set_md_entry_association_multi(IOPMP_t *iopmp,
         prev_top = 0;
     }
 
-    for (int m = 0; m < md_num; m++) {
+    for (uint32_t m = 0; m < md_num; m++) {
         this_top = prev_top + num_entries[m];
         if (this_top > iopmp->entry_num)
             return IOPMP_ERR_OUT_OF_BOUNDS;
@@ -1654,7 +1654,7 @@ static bool __check_entry_priority(IOPMP_t *iopmp,
      * The priority entries are indexed from 0 ~ (num_prient - 1).
      * The non-priority entries are indexed from num_prient ~ (N - 1).
      */
-    for (int i = 0; i < num_entry; i++) {
+    for (uint32_t i = 0; i < num_entry; i++) {
         switch (entry_array[i].prient_flag) {
         case IOPMP_PRIENT_ANY:
             break;

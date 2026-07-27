@@ -1096,7 +1096,7 @@ enum iopmp_error generic_set_entries(IOPMP_t *iopmp,
                                      uint32_t idx_start, uint32_t num_entry)
 {
     uintptr_t e = get_addr_of_entry(iopmp, idx_start);
-    int i;
+    uint32_t i;
 
     for (i = 0; i < num_entry; i++) {
         io_write32(e + IOPMP_ENTRY_CFG_BASE, 0);
@@ -1116,7 +1116,7 @@ void generic_get_entries(IOPMP_t *iopmp, struct iopmp_entry *entry_array,
 {
     uintptr_t e = get_addr_of_entry(iopmp, idx_start);
     uint32_t addr, addrh = 0, cfg;
-    int i;
+    uint32_t i;
 
     for (i = 0; i < num_entry; i++) {
         /* Read ENTRY_ADDR(idx), ENTRY_ADDRH(idx), and ENTRY_CFG(idx) from IP */
@@ -1136,7 +1136,7 @@ void generic_clear_entries(IOPMP_t *iopmp, uint32_t idx_start,
                            uint32_t num_entry)
 {
     uintptr_t e = get_addr_of_entry(iopmp, idx_start);
-    int i;
+    uint32_t i;
 
     for (i = 0; i < num_entry; i++) {
         io_write32(e + IOPMP_ENTRY_CFG_BASE, 0);
@@ -1390,7 +1390,7 @@ enum iopmp_error srcmd_fmt_2_mdcfg_fmt_1_md_entry_num_0_set_entries(
 {
     enum iopmp_error ret;
 
-    for (int i = 0; i < num_entry; i++) {
+    for (uint32_t i = 0; i < num_entry; i++) {
         ret = srcmd_fmt_2_mdcfg_fmt_1_md_entry_num_0_set_entry(
                 iopmp, &entry_array[i], idx_start + i);
         if (ret != IOPMP_OK)
