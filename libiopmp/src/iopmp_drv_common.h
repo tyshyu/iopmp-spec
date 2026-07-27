@@ -165,41 +165,6 @@ iopmp_drv_init_common(IOPMP_t *iopmp, uintptr_t addr,
                       struct iopmp_operations_specific *ops_specific);
 
 /**
- * \brief Set the global entries into IOPMP
- *
- * \param[in] iopmp             The IOPMP instance to be written
- * \param[in] entry_array       The array of entries
- * \param[in] idx_start         The global start index of target entries
- * \param[in] num_entry         The number of entries to be written
- *
- * \return IOPMP_OK
- */
-enum iopmp_error generic_set_entries(IOPMP_t *iopmp,
-                                     const struct iopmp_entry *entry_array,
-                                     uint32_t idx_start, uint32_t num_entry);
-
-/**
- * \brief Get the global entries from IOPMP
- *
- * \param[in] iopmp             The IOPMP instance to be read
- * \param[out] entry_array      The array of entries
- * \param[in] idx_start         The global start index of target entries
- * \param[in] num_entry         The number of entries to be read
- */
-void generic_get_entries(IOPMP_t *iopmp, struct iopmp_entry *entry_array,
-                         uint32_t idx_start, uint32_t num_entry);
-
-/**
- * \brief Clear IOPMP entries
- *
- * \param[in] iopmp             The IOPMP instance
- * \param[in] idx_start         The start index of entries to be cleared
- * \param[in] num_entry         The number of entries to be cleared
- */
-void generic_clear_entries(IOPMP_t *iopmp, uint32_t idx_start,
-                           uint32_t num_entry);
-
-/**
  * \brief Get the associated MD bitmap and lock bit of given RRID
  *
  * \param[in] iopmp             The IOPMP instance to be got
@@ -413,5 +378,286 @@ srcmd_fmt_2_set_md_permission_multi(IOPMP_t *iopmp, uint32_t mdidx,
 enum iopmp_error srcmd_fmt_2_mdcfg_fmt_1_md_entry_num_0_set_entries(
     IOPMP_t *iopmp, const struct iopmp_entry *entry_array,
     uint32_t idx_start, uint32_t num_entry);
+
+/******************************************************************************/
+/* Generic operations, shared by every IOPMP model                            */
+/******************************************************************************/
+/*
+ * One implementation serves every model, so libiopmp calls these by name. A
+ * driver that has to replace one installs it in iopmp->ops_generic, which each
+ * call site tests first. See struct iopmp_operations_generic.
+ */
+/**
+ * \brief Capture latest IOPMP error report
+ *
+ * \param[in] iopmp             The IOPMP instance to be captured
+ * \param[out] err_report       The pointer to IOPMP error report structure
+ * \param[in] invalidate        Flag to clear V bit after reading error report
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_NOT_EXIST if there is no an pending error
+ */
+enum iopmp_error generic_capture_error(IOPMP_t *iopmp,
+                                       IOPMP_ERR_REPORT_t *err_report,
+                                       bool invalidate);
+
+/**
+ * \brief Clear IOPMP entries
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] idx_start         The start index of entries to be cleared
+ * \param[in] num_entry         The number of entries to be cleared
+ */
+void generic_clear_entries(IOPMP_t *iopmp, uint32_t idx_start,
+                           uint32_t num_entry);
+
+/**
+ * \brief Set the IOPMP HWCFG0.enable
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ */
+void generic_enable(IOPMP_t *iopmp);
+
+/**
+ * \brief Check if there is an MSI write error and clear the flag
+ *
+ * \param[in] iopmp             The IOPMP instance to be checked
+ * \param[out] msi_werr         The pointer to flag
+ */
+void generic_get_and_clear_msi_werr(IOPMP_t *iopmp, bool *msi_werr);
+
+/**
+ * \brief Get the global entries from IOPMP
+ *
+ * \param[in] iopmp             The IOPMP instance to be read
+ * \param[out] entry_array      The array of entries
+ * \param[in] idx_start         The global start index of target entries
+ * \param[in] num_entry         The number of entries to be read
+ */
+void generic_get_entries(IOPMP_t *iopmp, struct iopmp_entry *entry_array,
+                         uint32_t idx_start, uint32_t num_entry);
+
+/**
+ * \brief Get subsequent violation window
+ *
+ * \param[in] iopmp             The IOPMP instance to be allocated
+ * \param[in,out] svi           When calling, user can specify start index of
+ *                              search windows. When this function returns with
+ *                              IOPMP_OK, svi indicates the index of window
+ *                              which has subsequent violation
+ * \param[out] svw              When this function returns with IOPMP_OK, svw
+ *                              indicates the content of window which has
+ *                              subsequent violation
+ *
+ * \retval IOPMP_OK if at least one subsequent violation is found
+ * \retval IOPMP_ERR_NOT_EXIST if there is no any subsequent violation
+ *
+ * \note Expected to be called after iopmp_capture_error() to get ERR_INFO.svc
+ */
+enum iopmp_error generic_get_sv_window(IOPMP_t *iopmp, uint16_t *svi,
+                                       uint16_t *svw);
+
+/**
+ * \brief Invalidate the error record by clearing ERR_INFO.v bit
+ *
+ * \param[in] iopmp             The IOPMP instance to be invalidated
+ */
+void generic_invalidate_error(IOPMP_t *iopmp);
+
+/**
+ * \brief Lock ENTRY(0) ~ ENTRY(entry_num - 1)
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] entry_num     Input the number of entry to be locked. Output
+ *                              WARL value
+ * \param[in] lock              Lock ENTRYLCK register or not
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p entry_num does not match
+ *         the actual value. The actual value is output via \p entry_num
+ */
+enum iopmp_error generic_lock_entries(IOPMP_t *iopmp, uint32_t *entry_num,
+                                      bool lock);
+
+/**
+ * \brief Set IOPMP ERR_CFG.l to lock ERR_CFG register
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ */
+void generic_lock_err_cfg(IOPMP_t *iopmp);
+
+/**
+ * \brief Lock number of priority entry
+ *
+ * \param[in] iopmp             The IOPMP instance
+ */
+void generic_lock_prio_entry_num(IOPMP_t *iopmp);
+
+/**
+ * \brief Lock the RRID tagged to outgoing transactions
+ *
+ * \param[in] iopmp             The IOPMP instance
+ */
+void generic_lock_rrid_transl(IOPMP_t *iopmp);
+
+/**
+ * \brief Poll until MDSTALL.is_busy == 0
+ *
+ * \param[in] iopmp             The IOPMP instance to be checked
+ * \param[in] polling           Set true to poll the status until takes effect
+ * \param[in] stall_or_resume   Set true to poll for stall status or set false
+ *                              to poll for resume status
+ *
+ * \retval 1 if the previous operation has taken effect
+ * \retval 0 if the previous operation has not taken effect yet
+ */
+bool generic_poll_mdstall(IOPMP_t *iopmp, bool polling, bool stall_or_resume);
+
+/**
+ * \brief Resume the stalled transactions previously stalled, and poll the
+ * resume status until resuming takes effect if necessary
+ *
+ * \param[in] iopmp             The IOPMP instance to be resumed
+ * \param[in] polling           Set true to poll the resume status until
+ *                              resuming takes effect
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual value
+ */
+enum iopmp_error generic_resume_transactions(IOPMP_t *iopmp, bool polling);
+
+/**
+ * \brief Set the global entries into IOPMP
+ *
+ * \param[in] iopmp             The IOPMP instance to be written
+ * \param[in] entry_array       The array of entries
+ * \param[in] idx_start         The global start index of target entries
+ * \param[in] num_entry         The number of entries to be written
+ *
+ * \return IOPMP_OK
+ */
+enum iopmp_error generic_set_entries(IOPMP_t *iopmp,
+                                     const struct iopmp_entry *entry_array,
+                                     uint32_t idx_start, uint32_t num_entry);
+
+/**
+ * \brief Set IOPMP ERR_CFG.rs to suppress/express error response
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] suppress      True to suppress or false to express
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p suppress does not match
+ *         the actual value. The actual value is output via \p suppress
+ */
+enum iopmp_error generic_set_global_err_resp(IOPMP_t *iopmp, bool *suppress);
+
+/**
+ * \brief Set IOPMP ERR_CFG.ie to enable/disable IOPMP global interrupt
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in] enable            True to enable or false to disable
+ */
+void generic_set_global_intr(IOPMP_t *iopmp, bool enable);
+
+/**
+ * \brief Set IOPMP message-signaled interrupts (MSI) information
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] msiaddr64     Input 64-bit MSI address. Output WARL value
+ * \param[in,out] msidata       Input 11-bit MSI data. Output WARL value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if \p msiaddr64 or \p msidata can not be
+ *         written into \p iopmp
+ */
+enum iopmp_error generic_set_msi_info(IOPMP_t *iopmp, uint64_t *msiaddr64,
+                                      uint16_t *msidata);
+
+/**
+ * \brief Set IOPMP message-signaled interrupts (MSI) enable/disable
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] enable        True to enable or false to disable
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if \p enable can not be written into \p iopmp
+ */
+enum iopmp_error generic_set_msi_sel(IOPMP_t *iopmp, bool *enable);
+
+/**
+ * \brief Set IOPMP HWCFG2.prio_entry
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] num_entry     Input the number of entries to be matched with
+ *                              priority. Output WARL value.
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p num_entry does not match
+ *         the actual value. The actual value is output via \p num_entry
+ */
+enum iopmp_error generic_set_prio_entry_num(IOPMP_t *iopmp,
+                                            uint16_t *num_entry);
+
+/**
+ * \brief Write RRIDSCP with given RRID and operation
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] rrid          Input the RRID to be stalled. Output WARL value
+ * \param[in] op                The operation of RRIDSCP
+ * \param[out] stat             The pointer to store enum iopmp_rridscp_stat
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p rrid does not match the
+ *         actual value. The actual value is output via \p rrid
+ */
+enum iopmp_error generic_set_rridscp(IOPMP_t *iopmp, uint32_t *rrid,
+                                     enum iopmp_rridscp_op op,
+                                     enum iopmp_rridscp_stat *stat);
+
+/**
+ * \brief Set IOPMP HWCFG3.rrid_transl
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] rrid_transl   Input the value of rrid_transl to be set. Output
+ *                              WARL value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p rrid_transl does not
+ *         match the actual value. The actual value is output via \p rrid_transl
+ */
+enum iopmp_error generic_set_rrid_transl(IOPMP_t *iopmp,
+                                         uint16_t *rrid_transl);
+
+/**
+ * \brief Set IOPMP ERR_CFG.stall_violation_en
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] enable        Input 1 to enable, 0 to disable. Output WARL
+ *                              value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if \p enable can't be written into \p iopmp
+ */
+enum iopmp_error generic_set_stall_violation_en(IOPMP_t *iopmp, bool *enable);
+
+/**
+ * \brief Set MDSTALL to stall the transactions related to MDs bitmap, and poll
+ * the stall status until stall takes effect if necessary
+ *
+ * \param[in] iopmp             The IOPMP instance to be set
+ * \param[in,out] mds           Input the MD bitmap to be stalled. Output WARL
+ *                              value
+ * \param[in] exempt            Stall transactions with exempt selected MDs
+ * \param[in] polling           Set true to poll the stall status until stalling
+ *                              takes effect
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual value. The actual value is output via \p mds
+ */
+enum iopmp_error generic_stall_by_mds(IOPMP_t *iopmp, uint64_t *mds,
+                                      bool exempt, bool polling);
 
 #endif

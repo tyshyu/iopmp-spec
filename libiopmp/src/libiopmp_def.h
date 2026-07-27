@@ -22,7 +22,21 @@
 /******************************************************************************/
 /* IOPMP operations                                                           */
 /******************************************************************************/
-/** Structure represents the generic operations for all the models */
+/**
+ * Structure represents the generic operations for all the models
+ *
+ * These act on the registers that chapters 2 to 4 of the specification make
+ * mandatory and define the same way for every model, so libiopmp implements
+ * each of them once and calls it by name. A driver that needs to replace one
+ * fills in the members that differ and points iopmp->ops_generic at the
+ * result; a member left NULL, and an instance whose ops_generic is NULL, keep
+ * the built-in implementation.
+ *
+ * The SRCMD_FMT=2/MDCFG_FMT=1 driver uses it to write SRCMD_PERM(H) alongside
+ * each entry when K=1. The other case is silicon built against a specification
+ * older than the one libiopmp targets, which can share an image with a
+ * conforming instance because the choice is made per instance, not per build.
+ */
 struct iopmp_operations_generic {
     /** Lock the number of priority entries. */
     void (*lock_prio_entry_num)(IOPMP_t *iopmp);

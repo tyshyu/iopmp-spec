@@ -141,8 +141,11 @@ enum iopmp_error iopmp_lock_prio_entry_num(IOPMP_t *iopmp)
         return IOPMP_OK;
 
     /* If HWCFG2.prio_ent_prog is not wired to 0, this operation is mandatory */
-    assert(iopmp->ops_generic->lock_prio_entry_num);
-    iopmp->ops_generic->lock_prio_entry_num(iopmp);
+    if (iopmp->ops_generic && iopmp->ops_generic->lock_prio_entry_num) {
+        iopmp->ops_generic->lock_prio_entry_num(iopmp);
+    } else {
+        generic_lock_prio_entry_num(iopmp);
+    }
     iopmp->prio_ent_prog = false; /* update local cache */
 
     return IOPMP_OK;
@@ -161,8 +164,11 @@ enum iopmp_error iopmp_lock_rrid_transl(IOPMP_t *iopmp)
     /*
      * If HWCFG3.rrid_transl_prog is not wired to 0, this operation is mandatory
      */
-    assert(iopmp->ops_generic->lock_rrid_transl);
-    iopmp->ops_generic->lock_rrid_transl(iopmp);
+    if (iopmp->ops_generic && iopmp->ops_generic->lock_rrid_transl) {
+        iopmp->ops_generic->lock_rrid_transl(iopmp);
+    } else {
+        generic_lock_rrid_transl(iopmp);
+    }
     iopmp->rrid_transl_prog = false;    /* update local cache */
 
     return IOPMP_OK;
@@ -177,8 +183,11 @@ enum iopmp_error iopmp_set_enable(IOPMP_t *iopmp)
         return IOPMP_OK;
 
     /* HWCFG0.enable is mandatory W1SS bit */
-    assert(iopmp->ops_generic->enable);
-    iopmp->ops_generic->enable(iopmp);
+    if (iopmp->ops_generic && iopmp->ops_generic->enable) {
+        iopmp->ops_generic->enable(iopmp);
+    } else {
+        generic_enable(iopmp);
+    }
     iopmp->enable = true;   /* update local cache */
 
     return IOPMP_OK;
@@ -202,8 +211,11 @@ enum iopmp_error iopmp_set_prio_entry_num(IOPMP_t *iopmp, uint16_t *num_entry)
     /*
      * If HWCFG2.prio_ent_prog is not wired to 0, this operation is mandatory
      */
-    assert(iopmp->ops_generic->set_prio_entry_num);
-    ret = iopmp->ops_generic->set_prio_entry_num(iopmp, num_entry);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_prio_entry_num) {
+        ret = iopmp->ops_generic->set_prio_entry_num(iopmp, num_entry);
+    } else {
+        ret = generic_set_prio_entry_num(iopmp, num_entry);
+    }
     /* HWCFG2.prio_entry is WARL field. We always update local cache for it */
     iopmp->prio_entry_num = *num_entry;
 
@@ -257,8 +269,11 @@ enum iopmp_error iopmp_set_rrid_transl(IOPMP_t *iopmp, uint16_t *rrid_transl)
     /*
      * If HWCFG3.rrid_transl_prog is not wired to 0, this operation is mandatory
      */
-    assert(iopmp->ops_generic->set_rrid_transl);
-    ret = iopmp->ops_generic->set_rrid_transl(iopmp, rrid_transl);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_rrid_transl) {
+        ret = iopmp->ops_generic->set_rrid_transl(iopmp, rrid_transl);
+    } else {
+        ret = generic_set_rrid_transl(iopmp, rrid_transl);
+    }
     /* HWCFG3.rrid_transl is WARL field. We always update local cache for it */
     iopmp->rrid_transl = *rrid_transl;
 
@@ -298,8 +313,11 @@ enum iopmp_error iopmp_stall_transactions_by_mds(IOPMP_t *iopmp, uint64_t *mds,
         return IOPMP_ERR_ILLEGAL_VALUE;
     }
 
-    assert(iopmp->ops_generic->stall_by_mds);
-    ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, exempt, polling);
+    if (iopmp->ops_generic && iopmp->ops_generic->stall_by_mds) {
+        ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, exempt, polling);
+    } else {
+        ret = generic_stall_by_mds(iopmp, mds, exempt, polling);
+    }
     if (ret == IOPMP_OK)
         iopmp->is_stalling = true;
 
@@ -319,8 +337,11 @@ enum iopmp_error iopmp_resume_transactions(IOPMP_t *iopmp, bool polling)
     if (!iopmp->is_stalling)
         return IOPMP_ERR_NOT_ALLOWED;
 
-    assert(iopmp->ops_generic->resume_transactions);
-    ret = iopmp->ops_generic->resume_transactions(iopmp, polling);
+    if (iopmp->ops_generic && iopmp->ops_generic->resume_transactions) {
+        ret = iopmp->ops_generic->resume_transactions(iopmp, polling);
+    } else {
+        ret = generic_resume_transactions(iopmp, polling);
+    }
     if (ret == IOPMP_OK)
         iopmp->is_stalling = false;
 
@@ -340,8 +361,12 @@ static enum iopmp_error __iopmp_poll_mdstall(IOPMP_t *iopmp,
     if (!done)
         return IOPMP_ERR_INVALID_PARAMETER;
 
-    assert(iopmp->ops_generic->poll_mdstall);
-    *done = iopmp->ops_generic->poll_mdstall(iopmp, polling, stall_or_resume);
+    if (iopmp->ops_generic && iopmp->ops_generic->poll_mdstall) {
+        *done = iopmp->ops_generic->poll_mdstall(iopmp, polling,
+                                                 stall_or_resume);
+    } else {
+        *done = generic_poll_mdstall(iopmp, polling, stall_or_resume);
+    }
 
     return IOPMP_OK;
 }
@@ -381,13 +406,19 @@ enum iopmp_error iopmp_probe_stall_by_md(IOPMP_t *iopmp, uint64_t *mds)
     if (iopmp->is_stalling)
         return IOPMP_ERR_NOT_ALLOWED;
 
-    assert(iopmp->ops_generic->stall_by_mds);
     *mds = GENMASK_64((iopmp->md_num - 1), 0);
-    ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, false, false);
+    if (iopmp->ops_generic && iopmp->ops_generic->stall_by_mds) {
+        ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, false, false);
+    } else {
+        ret = generic_stall_by_mds(iopmp, mds, false, false);
+    }
     if (ret == IOPMP_OK) {
         /* Every MD was accepted, so undo the stall the probe just caused */
-        assert(iopmp->ops_generic->resume_transactions);
-        ret = iopmp->ops_generic->resume_transactions(iopmp, true);
+        if (iopmp->ops_generic && iopmp->ops_generic->resume_transactions) {
+            ret = iopmp->ops_generic->resume_transactions(iopmp, true);
+        } else {
+            ret = generic_resume_transactions(iopmp, true);
+        }
     } else if (ret == IOPMP_ERR_ILLEGAL_VALUE) {
         /* A narrower read-back is the answer, not a failure, and
          * stall_by_mds() has already resumed on our behalf */
@@ -431,8 +462,11 @@ static enum iopmp_error __iopmp_set_rridscp(IOPMP_t *iopmp, uint32_t *rrid,
     if (*rrid >= iopmp->rrid_num)
         return IOPMP_ERR_OUT_OF_BOUNDS;
 
-    assert(iopmp->ops_generic->set_rridscp);
-    return iopmp->ops_generic->set_rridscp(iopmp, rrid, op, stat);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_rridscp) {
+        return iopmp->ops_generic->set_rridscp(iopmp, rrid, op, stat);
+    } else {
+        return generic_set_rridscp(iopmp, rrid, op, stat);
+    }
 }
 
 enum iopmp_error iopmp_stall_cherry_pick_rrid(IOPMP_t *iopmp, uint32_t *rrid,
@@ -600,9 +634,12 @@ enum iopmp_error iopmp_lock_entries(IOPMP_t *iopmp, uint32_t *entry_num,
         return IOPMP_ERR_NOT_ALLOWED;   /* Should be monotonically increased */
 
     /* ENTRYLCK is mandatory register */
-    assert(iopmp->ops_generic->lock_entries);
 
-    ret = iopmp->ops_generic->lock_entries(iopmp, entry_num, lock);
+    if (iopmp->ops_generic && iopmp->ops_generic->lock_entries) {
+        ret = iopmp->ops_generic->lock_entries(iopmp, entry_num, lock);
+    } else {
+        ret = generic_lock_entries(iopmp, entry_num, lock);
+    }
     iopmp->entrylck_lock = lock;
     iopmp->entrylck_f = *entry_num;
 
@@ -618,9 +655,12 @@ enum iopmp_error iopmp_lock_err_cfg(IOPMP_t *iopmp)
         return IOPMP_OK;
 
     /* ERR_CFG.l is mandatory W1SS bit */
-    assert(iopmp->ops_generic->lock_err_cfg);
 
-    iopmp->ops_generic->lock_err_cfg(iopmp);
+    if (iopmp->ops_generic && iopmp->ops_generic->lock_err_cfg) {
+        iopmp->ops_generic->lock_err_cfg(iopmp);
+    } else {
+        generic_lock_err_cfg(iopmp);
+    }
     iopmp->err_cfg_lock = true; /* update local cache */
 
     return IOPMP_OK;
@@ -639,9 +679,12 @@ enum iopmp_error iopmp_set_global_intr(IOPMP_t *iopmp, bool enable)
         return IOPMP_ERR_REG_IS_LOCKED;
 
     /* ERR_CFG.ie is mandatory RW bit */
-    assert(iopmp->ops_generic->set_global_intr);
 
-    iopmp->ops_generic->set_global_intr(iopmp, enable);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_global_intr) {
+        iopmp->ops_generic->set_global_intr(iopmp, enable);
+    } else {
+        generic_set_global_intr(iopmp, enable);
+    }
     iopmp->intr_enable = enable;    /* update local cache */
 
     return IOPMP_OK;
@@ -668,10 +711,11 @@ enum iopmp_error iopmp_set_global_err_resp(IOPMP_t *iopmp, bool *suppress)
         return IOPMP_ERR_REG_IS_LOCKED;
 
     /* ERR_CFG.rs is optional */
-    if (!iopmp->ops_generic->set_global_err_resp)
-        return IOPMP_ERR_NOT_SUPPORTED;
-
-    ret = iopmp->ops_generic->set_global_err_resp(iopmp, suppress);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_global_err_resp) {
+        ret = iopmp->ops_generic->set_global_err_resp(iopmp, suppress);
+    } else {
+        ret = generic_set_global_err_resp(iopmp, suppress);
+    }
     iopmp->err_resp_suppress = *suppress;   /* update local cache */
 
     return ret;
@@ -701,10 +745,11 @@ enum iopmp_error iopmp_set_msi_sel(IOPMP_t *iopmp, bool *enable)
         return IOPMP_ERR_REG_IS_LOCKED;
 
     /* ERR_CFG.msi_sel can be programmable or hardwired */
-    if (!iopmp->ops_generic->set_msi_sel)
-        return IOPMP_ERR_NOT_SUPPORTED;
-
-    ret = iopmp->ops_generic->set_msi_sel(iopmp, enable);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_msi_sel) {
+        ret = iopmp->ops_generic->set_msi_sel(iopmp, enable);
+    } else {
+        ret = generic_set_msi_sel(iopmp, enable);
+    }
     iopmp->msi_sel = *enable;   /* update local cache */
 
     return ret;
@@ -777,8 +822,11 @@ enum iopmp_error iopmp_set_msi_info(IOPMP_t *iopmp, uint64_t *msiaddr64,
     if (iopmp->err_cfg_lock)
         return IOPMP_ERR_REG_IS_LOCKED;
 
-    assert(iopmp->ops_generic->set_msi_info);
-    ret = iopmp->ops_generic->set_msi_info(iopmp, msiaddr64, msidata);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_msi_info) {
+        ret = iopmp->ops_generic->set_msi_info(iopmp, msiaddr64, msidata);
+    } else {
+        ret = generic_set_msi_info(iopmp, msiaddr64, msidata);
+    }
     /*
      * ERR_CFG.msidata, ERR_MSIADDR and ERR_MSIADDRH are WARL registers.
      * We need to always update local data cache for them.
@@ -800,8 +848,11 @@ enum iopmp_error iopmp_get_and_clear_msi_werr(IOPMP_t *iopmp, bool *msi_werr)
         return IOPMP_ERR_INVALID_PARAMETER;
 
     /* If HWCFG2.msi_en=1, this operation is mandatory */
-    assert(iopmp->ops_generic->get_and_clear_msi_werr);
-    iopmp->ops_generic->get_and_clear_msi_werr(iopmp, msi_werr);
+    if (iopmp->ops_generic && iopmp->ops_generic->get_and_clear_msi_werr) {
+        iopmp->ops_generic->get_and_clear_msi_werr(iopmp, msi_werr);
+    } else {
+        generic_get_and_clear_msi_werr(iopmp, msi_werr);
+    }
 
     return IOPMP_OK;
 }
@@ -826,8 +877,11 @@ enum iopmp_error iopmp_set_stall_violation_en(IOPMP_t *iopmp, bool *enable)
         return IOPMP_ERR_REG_IS_LOCKED;
 
     /* If HWCFG2.stall_en=1, this operation is mandatory */
-    assert(iopmp->ops_generic->set_stall_violation_en);
-    ret = iopmp->ops_generic->set_stall_violation_en(iopmp, enable);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_stall_violation_en) {
+        ret = iopmp->ops_generic->set_stall_violation_en(iopmp, enable);
+    } else {
+        ret = generic_set_stall_violation_en(iopmp, enable);
+    }
     iopmp->stall_violation_en = *enable;
 
     return ret;
@@ -844,8 +898,11 @@ enum iopmp_error iopmp_invalidate_error(IOPMP_t *iopmp)
     if (iopmp->no_err_rec)
         return IOPMP_ERR_NOT_SUPPORTED;
 
-    assert(iopmp->ops_generic->invalidate_error);
-    iopmp->ops_generic->invalidate_error(iopmp);
+    if (iopmp->ops_generic && iopmp->ops_generic->invalidate_error) {
+        iopmp->ops_generic->invalidate_error(iopmp);
+    } else {
+        generic_invalidate_error(iopmp);
+    }
 
     return IOPMP_OK;
 }
@@ -862,8 +919,11 @@ enum iopmp_error iopmp_capture_error(IOPMP_t *iopmp,
     if (!err_report)
         return IOPMP_ERR_INVALID_PARAMETER;
 
-    assert(iopmp->ops_generic->capture_error);
-    return iopmp->ops_generic->capture_error(iopmp, err_report, invalidate);
+    if (iopmp->ops_generic && iopmp->ops_generic->capture_error) {
+        return iopmp->ops_generic->capture_error(iopmp, err_report, invalidate);
+    } else {
+        return generic_capture_error(iopmp, err_report, invalidate);
+    }
 }
 
 enum iopmp_error iopmp_mfr_get_sv_window(IOPMP_t *iopmp, uint16_t *svi,
@@ -878,8 +938,11 @@ enum iopmp_error iopmp_mfr_get_sv_window(IOPMP_t *iopmp, uint16_t *svi,
         return IOPMP_ERR_INVALID_PARAMETER;
 
     /* If HWCFG2.mfr_en=1, this operation is mandatory */
-    assert(iopmp->ops_generic->get_sv_window);
-    return iopmp->ops_generic->get_sv_window(iopmp, svi, svw);
+    if (iopmp->ops_generic && iopmp->ops_generic->get_sv_window) {
+        return iopmp->ops_generic->get_sv_window(iopmp, svi, svw);
+    } else {
+        return generic_get_sv_window(iopmp, svi, svw);
+    }
 }
 
 enum iopmp_error iopmp_lock_srcmd_table_fmt_0(IOPMP_t *iopmp, uint32_t rrid)
@@ -1835,9 +1898,12 @@ enum iopmp_error iopmp_set_entries(IOPMP_t *iopmp,
     if (idx_start < iopmp->entrylck_f)
         return IOPMP_ERR_REG_IS_LOCKED;
 
-    assert(iopmp->ops_generic->set_entries);
-    return iopmp->ops_generic->set_entries(iopmp, entry_array, idx_start,
-                                           num_entry);
+    if (iopmp->ops_generic && iopmp->ops_generic->set_entries) {
+        return iopmp->ops_generic->set_entries(iopmp, entry_array, idx_start,
+                                               num_entry);
+    } else {
+        return generic_set_entries(iopmp, entry_array, idx_start, num_entry);
+    }
 }
 
 enum iopmp_error iopmp_set_entries_to_md(IOPMP_t *iopmp, uint32_t mdidx,
@@ -1879,8 +1945,12 @@ enum iopmp_error iopmp_get_entries(IOPMP_t *iopmp,
         return IOPMP_ERR_OUT_OF_BOUNDS;
 
     /* Read IOPMP entries from IOPMP registers */
-    assert(iopmp->ops_generic->get_entries);
-    iopmp->ops_generic->get_entries(iopmp, entry_array, idx_start, num_entry);
+    if (iopmp->ops_generic && iopmp->ops_generic->get_entries) {
+        iopmp->ops_generic->get_entries(iopmp, entry_array, idx_start,
+                                        num_entry);
+    } else {
+        generic_get_entries(iopmp, entry_array, idx_start, num_entry);
+    }
 
     return IOPMP_OK;
 }
@@ -1926,8 +1996,11 @@ enum iopmp_error iopmp_clear_entries(IOPMP_t *iopmp, uint32_t idx_start,
     if (idx_start < iopmp->entrylck_f)
         return IOPMP_ERR_REG_IS_LOCKED;
 
-    assert(iopmp->ops_generic->clear_entries);
-    iopmp->ops_generic->clear_entries(iopmp, idx_start, num_entry);
+    if (iopmp->ops_generic && iopmp->ops_generic->clear_entries) {
+        iopmp->ops_generic->clear_entries(iopmp, idx_start, num_entry);
+    } else {
+        generic_clear_entries(iopmp, idx_start, num_entry);
+    }
 
     return IOPMP_OK;
 }

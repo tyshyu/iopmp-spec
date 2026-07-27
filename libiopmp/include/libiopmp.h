@@ -35,7 +35,7 @@ struct iopmp_instance {
     uint32_t granularity;
     /** Implemented bits of ENTRY_ADDR(H) */
     uint64_t entry_addr_bits;
-    /** Generic operations for all models */
+    /** Per-instance override of the generic operations, NULL for none */
     struct iopmp_operations_generic *ops_generic;
     /** Operations for specific model */
     struct iopmp_operations_specific *ops_specific;
@@ -1627,10 +1627,13 @@ enum iopmp_error iopmp_set_global_intr(IOPMP_t *iopmp, bool enable);
  * \retval IOPMP_OK if successes
  * \retval IOPMP_ERR_INVALID_PARAMETER if given \p suppress is NULL
  * \retval IOPMP_ERR_REG_IS_LOCKED if ERR_CFG register is locked
- * \retval IOPMP_ERR_NOT_SUPPORTED if \p iopmp does not support configure global
- *         error responses
  * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p suppress does not match
  *         the actual value. The actual value is output via \p suppress
+ *
+ * \note ERR_CFG.rs is WARL and has no capability bit in HWCFG, so an
+ *       implementation that hardwires it is reported this way rather than as
+ *       IOPMP_ERR_NOT_SUPPORTED: \p suppress comes back holding the value the
+ *       hardware is fixed at
  */
 enum iopmp_error iopmp_set_global_err_resp(IOPMP_t *iopmp, bool *suppress);
 
