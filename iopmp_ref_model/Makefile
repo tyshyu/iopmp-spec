@@ -114,9 +114,9 @@ build: $(BIN_DIR) $(LIB_DIR) $(LIBIOPMP_PREREQ)
 		source=$$(echo $$entry | cut -d':' -f2); \
 		echo "Building executable for $(model)..."; \
 		if [ -n "$(sharedLib)" ]; then \
-			$(CC) $(CFLAGS) $(TEST_DIR)/$$source -L$(LIB_DIR) -l:iopmp_model.so -o $(BIN_DIR)/$$model $(LDFLAGS); \
+			$(CC) $(CFLAGS) $(TEST_DIR)/$$source -L$(LIB_DIR) -l:iopmp_model.so -o $(BIN_DIR)/$(model) $(LDFLAGS); \
 		else \
-			$(CC) $(CFLAGS) $(TEST_DIR)/$$source -L$(LIB_DIR) -l:iopmp_model.a -o $(BIN_DIR)/$$model $(LDFLAGS); \
+			$(CC) $(CFLAGS) $(TEST_DIR)/$$source -L$(LIB_DIR) -l:iopmp_model.a -o $(BIN_DIR)/$(model) $(LDFLAGS); \
 		fi; \
 		echo "Executable for $(model) built successfully."; \
 	fi
