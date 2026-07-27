@@ -1823,50 +1823,10 @@ enum iopmp_error iopmp_clear_entries_in_md(IOPMP_t *iopmp, uint32_t mdidx)
     return iopmp_clear_entries(iopmp, md_entry_idx_start, md_num_entry);
 }
 
-/**
- * \brief Check if given index range of IOPMP entries belong to the MD(mdidx)
- *
- * \param[in] iopmp             The IOPMP instance
- * \param[in] mdidx             The index of target MD
- * \param[in] idx_start         The global start index of target entries
- * \param[in] num_entry         The number of entries to be checked
- *
- * \retval 1 if some of given IOPMP entries belong to the MD(mdidx)
- * \retval 0 if the given IOPMP entries do not belong to the MD(mdidx)
- */
-static bool __entries_intersect_with_md(IOPMP_t *iopmp, uint32_t mdidx,
-                                        uint32_t idx_start, uint32_t num_entry)
-{
-    uint32_t md_entry_idx_start, md_num_entry;
-
-    /* Get start index and number of entries this MD has */
-    __get_md_entry_association_nocheck(iopmp, mdidx, &md_entry_idx_start,
-                                       &md_num_entry);
-
-    uint32_t rangeA_start = md_entry_idx_start;
-    uint32_t rangeA_end = md_entry_idx_start + md_num_entry;
-    uint32_t rangeB_start = idx_start;
-    uint32_t rangeB_end = idx_start + num_entry;
-
-    if ((rangeB_start <= rangeA_start) &&
-        (rangeA_start < rangeB_end) &&
-        (rangeB_start < rangeA_end) &&
-        (rangeA_end <= rangeB_end))
-        return true;
-
-    if ((rangeA_start <= rangeB_start) &&
-        (rangeA_end <= rangeB_start))
-        return false;
-    if ((rangeB_end <= rangeA_start) &&
-        (rangeB_end <= rangeA_end))
-        return false;
-
-    return true;
-}
-
 enum iopmp_error iopmp_entries_get_belong_md(IOPMP_t *iopmp, uint32_t idx_start,
                                              uint32_t num_entry, uint64_t *mds)
 {
+    uint32_t idx_end, md_base, md_top;
     uint64_t __mds;
 
     assert(iopmp_is_initialized(iopmp));
@@ -1877,10 +1837,25 @@ enum iopmp_error iopmp_entries_get_belong_md(IOPMP_t *iopmp, uint32_t idx_start,
     if (!mds)
         return IOPMP_ERR_INVALID_PARAMETER;
 
+    /* An empty index range belongs to no MD */
+    if (!num_entry) {
+        *mds = 0;
+        return IOPMP_OK;
+    }
+
+    assert(iopmp->ops_specific->get_md_entry_top);
+    idx_end = idx_start + num_entry;
+    md_base = 0;
     __mds = 0;
-    for (int i = 0; i < iopmp->md_num; i++) {
-        if (__entries_intersect_with_md(iopmp, i, idx_start, num_entry))
-            __mds |= (uint64_t)1 << i;
+    /* The tops are monotonically increasing, so the top of MD(m-1) is the base
+     * of MD(m) and a single walk reads each top exactly once */
+    for (uint32_t m = 0; m < iopmp->md_num; m++) {
+        iopmp->ops_specific->get_md_entry_top(iopmp, m, &md_top);
+        /* [md_base, md_top) overlaps [idx_start, idx_end). An MD owning no
+         * entry can not be hit */
+        if (md_base < md_top && md_base < idx_end && idx_start < md_top)
+            __mds |= (uint64_t)1 << m;
+        md_base = md_top;
     }
 
     *mds = __mds;
