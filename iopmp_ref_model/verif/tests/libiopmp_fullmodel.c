@@ -2677,6 +2677,52 @@ int main(void)
     FAIL_IF(val_u64 != 0);
     END_TEST();
 
+    START_TEST("An empty index range belongs to no MD");
+    ret = iopmp_entries_get_belong_md(&iopmp, 4, 0, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != 0);
+    END_TEST();
+
+    START_TEST("A MD owning no entry is never reported as belonging");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    /* MD(0) owns entry 0 ~ 15, MD(1) owns entry 16 ~ 31, MD(2) onwards own
+     * nothing. The table stays monotonic, so this is a proper setting */
+    {
+        uint32_t num_entries[CFG_MD_NUM] = {16, 16};
+        FAIL_IF(iopmp_set_md_entry_association_multi(&iopmp, 0, num_entries,
+                                                     CFG_MD_NUM) != IOPMP_OK);
+    }
+    ret = iopmp_get_md_entry_association(&iopmp, 2, &val_u32, &val_u32_2);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u32 != 32);
+    FAIL_IF(val_u32_2 != 0);
+    /* Entry 0 ~ 31 covers MD(0) and MD(1), and no empty MD may appear */
+    ret = iopmp_entries_get_belong_md(&iopmp, 0, 32, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != 0x3);
+    /* Entry 20 ~ 23 sits inside MD(1) only */
+    ret = iopmp_entries_get_belong_md(&iopmp, 20, 4, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != 0x2);
+    END_TEST();
+
+    START_TEST("An improperly set MDCFG table reports no entry, not underflow");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    /* The reference model only makes the MDCFG table monotonic once the IOPMP
+     * is enabled, so MDCFG(2).t stays 0 while MDCFG(1).t is already 32 */
+    val_u32 = 16;
+    FAIL_IF(iopmp_set_md_entry_association_multi(&iopmp, 0, &val_u32, 1) != IOPMP_OK);
+    val_u32 = 16;
+    FAIL_IF(iopmp_set_md_entry_association_multi(&iopmp, 1, &val_u32, 1) != IOPMP_OK);
+    ret = iopmp_get_md_entry_association(&iopmp, 2, &val_u32, &val_u32_2);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u32 != 32);
+    FAIL_IF(val_u32_2 != 0);
+    ret = iopmp_entries_get_belong_md(&iopmp, 0, 32, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != 0x3);
+    END_TEST();
+
     START_TEST("Report belonging MDs with invalid arguments");
     FAIL_IF(iopmp_entries_get_belong_md(&iopmp, CFG_ENTRY_NUM, 1, &val_u64) != IOPMP_ERR_OUT_OF_BOUNDS);
     FAIL_IF(iopmp_entries_get_belong_md(&iopmp, CFG_ENTRY_NUM - 1, 2, &val_u64) != IOPMP_ERR_OUT_OF_BOUNDS);
@@ -3124,6 +3170,41 @@ int main(void)
     /**********************************************************************/
     /* Initialization rejections                                          */
     /**********************************************************************/
+    START_TEST("Detect granularity when the leading entries are in use");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    val_u32 = iopmp_get_granularity(&iopmp);
+    /* Occupy entry 0 ~ 3 so that the probe has to skip over them */
+    ret = iopmp_encode_entry(&iopmp, entries, 1, 0x1000, 0x1000,
+                             IOPMP_ENTRY_RW, 0);
+    FAIL_IF(ret != 1);
+    for (uint32_t i = 0; i < 4; i++)
+        FAIL_IF(iopmp_set_entry(&iopmp, entries, i) != IOPMP_OK);
+    /* Re-initializing must still detect the very same granularity */
+    FAIL_IF(iopmp_init(&iopmp, 0, IOPMP_SRCMD_FMT_0, IOPMP_MDCFG_FMT_0,
+                       IOPMP_IMPID_NOT_SPECIFIED) != IOPMP_OK);
+    FAIL_IF(iopmp_get_granularity(&iopmp) != val_u32);
+    FAIL_IF(val_u32 != iopmp_dev.granularity);
+    END_TEST();
+
+    START_TEST("Initialization fails when no entry is free to probe");
+    /* A small entry array so that every entry can be occupied */
+    cfg.entry_num = 8;
+    cfg.prio_entry = 4;
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    ret = iopmp_encode_entry(&iopmp, entries, 1, 0x1000, 0x1000,
+                             IOPMP_ENTRY_RW, 0);
+    FAIL_IF(ret != 1);
+    for (uint32_t i = 0; i < 8; i++)
+        FAIL_IF(iopmp_set_entry(&iopmp, entries, i) != IOPMP_OK);
+    /* Nothing is left to probe, so libiopmp must report it rather than
+     * computing a granularity out of a zero ENTRY_ADDR read-back */
+    FAIL_IF(iopmp_init(&iopmp, 0, IOPMP_SRCMD_FMT_0, IOPMP_MDCFG_FMT_0,
+                       IOPMP_IMPID_NOT_SPECIFIED) != IOPMP_ERR_NOT_AVAILABLE);
+    FAIL_IF(iopmp_is_initialized(&iopmp) != false);
+    cfg.entry_num = CFG_ENTRY_NUM;
+    cfg.prio_entry = 16;
+    END_TEST();
+
     START_TEST("Initialize with a model no compiled-in driver claims");
     reset_iopmp(&iopmp_dev, &cfg);
     /* No entry of iopmp_drivers[] claims a reserved SRCMD_FMT */
