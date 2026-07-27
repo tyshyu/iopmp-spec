@@ -763,6 +763,10 @@ enum iopmp_error iopmp_set_stall_violation_en(IOPMP_t *iopmp, bool *enable)
     if (iopmp->stall_violation_en == *enable)   /* Already set */
         return IOPMP_OK;
 
+    /* Already locked? */
+    if (iopmp->err_cfg_lock)
+        return IOPMP_ERR_REG_IS_LOCKED;
+
     /* If HWCFG2.stall_en=1, this operation is mandatory */
     assert(iopmp->ops_generic->set_stall_violation_en);
     ret = iopmp->ops_generic->set_stall_violation_en(iopmp, enable);
@@ -1333,7 +1337,7 @@ enum iopmp_error iopmp_set_md_entry_association_multi(IOPMP_t *iopmp,
                                                       uint32_t *num_entries,
                                                       uint32_t md_num)
 {
-    enum iopmp_error ret;
+    enum iopmp_error ret = IOPMP_OK;    /* md_num=0 skips the loop below */
     uint32_t prev_top, this_top;
 
     assert(iopmp_is_initialized(iopmp));
