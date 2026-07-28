@@ -3008,17 +3008,35 @@ int main(void)
     START_TEST("Stall and resume transactions by MD");
     FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
     /* Nothing is stalled yet */
-    FAIL_IF(iopmp_transactions_are_stalled(&iopmp, false) != IOPMP_ERR_NOT_EXIST);
+    FAIL_IF(iopmp_transactions_are_stalled(&iopmp, false, &val_bool) != IOPMP_ERR_NOT_EXIST);
     FAIL_IF(iopmp_resume_transactions(&iopmp, false) != IOPMP_ERR_NOT_ALLOWED);
     val_u64 = 0x8;
     ret = iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, true);
     FAIL_IF(ret != IOPMP_OK);
+    /* The stall was requested with polling, so it has taken effect */
+    val_bool = false;
+    ret = iopmp_transactions_are_stalled(&iopmp, false, &val_bool);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_bool != true);
     /* MDSTALL can only be written once before a resume */
     val_u64 = 0x8;
     FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, false) != IOPMP_ERR_NOT_ALLOWED);
-    FAIL_IF(iopmp_transactions_are_resumed(&iopmp, false) != IOPMP_ERR_NOT_EXIST);
+    FAIL_IF(iopmp_transactions_are_resumed(&iopmp, false, &val_bool) != IOPMP_ERR_NOT_EXIST);
     FAIL_IF(iopmp_resume_transactions(&iopmp, true) != IOPMP_OK);
+    val_bool = false;
+    ret = iopmp_transactions_are_resumed(&iopmp, false, &val_bool);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_bool != true);
     FAIL_IF(iopmp_resume_transactions(&iopmp, false) != IOPMP_ERR_NOT_ALLOWED);
+    END_TEST();
+
+    START_TEST("Poll the stall status with invalid arguments");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    val_u64 = 0x8;
+    FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, true) != IOPMP_OK);
+    FAIL_IF(iopmp_transactions_are_stalled(&iopmp, false, NULL) != IOPMP_ERR_INVALID_PARAMETER);
+    FAIL_IF(iopmp_resume_transactions(&iopmp, true) != IOPMP_OK);
+    FAIL_IF(iopmp_transactions_are_resumed(&iopmp, false, NULL) != IOPMP_ERR_INVALID_PARAMETER);
     END_TEST();
 
     START_TEST("Stall transactions with the exempt flag");

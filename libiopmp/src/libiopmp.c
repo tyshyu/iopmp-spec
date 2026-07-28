@@ -316,31 +316,39 @@ enum iopmp_error iopmp_resume_transactions(IOPMP_t *iopmp, bool polling)
 
 static enum iopmp_error __iopmp_poll_mdstall(IOPMP_t *iopmp,
                                              bool polling,
-                                             bool stall_or_resume)
+                                             bool stall_or_resume,
+                                             bool *done)
 {
     assert(iopmp_is_initialized(iopmp));
 
     if (!iopmp->support_stall_by_md)
         return IOPMP_ERR_NOT_SUPPORTED;
 
+    if (!done)
+        return IOPMP_ERR_INVALID_PARAMETER;
+
     assert(iopmp->ops_generic->poll_mdstall);
-    return iopmp->ops_generic->poll_mdstall(iopmp, polling, stall_or_resume);
+    *done = iopmp->ops_generic->poll_mdstall(iopmp, polling, stall_or_resume);
+
+    return IOPMP_OK;
 }
 
-enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling)
+enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling,
+                                                bool *stalled)
 {
     if (!iopmp->is_stalling)
         return IOPMP_ERR_NOT_EXIST;
 
-    return __iopmp_poll_mdstall(iopmp, polling, true);
+    return __iopmp_poll_mdstall(iopmp, polling, true, stalled);
 }
 
-enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling)
+enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling,
+                                                bool *resumed)
 {
     if (iopmp->is_stalling)
         return IOPMP_ERR_NOT_EXIST;
 
-    return __iopmp_poll_mdstall(iopmp, polling, false);
+    return __iopmp_poll_mdstall(iopmp, polling, false, resumed);
 }
 
 /**

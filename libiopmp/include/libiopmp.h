@@ -1398,14 +1398,17 @@ enum iopmp_error iopmp_resume_transactions(IOPMP_t *iopmp, bool polling);
  * \param[in] iopmp             The IOPMP instance to be checked
  * \param[in] polling           Set true to poll the stall status until stalling
  *                              takes effect
+ * \param[out] stalled          Set to 1 if the stall has taken effect, or to 0
+ *                              if it has not taken effect yet
  *
- * \retval 1 if the stall has taken effect
- * \retval 0 if the stall has not taken effect yet
+ * \retval IOPMP_OK if \p stalled has been written
+ * \retval IOPMP_ERR_INVALID_PARAMETER if given \p stalled is NULL
  * \retval IOPMP_ERR_NOT_SUPPORTED if \p iopmp does not support stall
  * \retval IOPMP_ERR_NOT_EXIST if \p iopmp did not stall any transactions by
  *         iopmp_stall_transactions_by_mds()
  */
-enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling);
+enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling,
+                                                bool *stalled);
 
 /**
  * \brief Check if the requested resume transactions takes effect
@@ -1413,14 +1416,17 @@ enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling);
  * \param[in] iopmp             The IOPMP instance to be checked
  * \param[in] polling           Set true to poll the resume status until
  *                              resuming takes effect
+ * \param[out] resumed          Set to 1 if the resuming has taken effect, or to
+ *                              0 if it has not taken effect yet
  *
- * \retval 1 if the resuming has taken effect
- * \retval 0 if the resuming has not taken effect yet
+ * \retval IOPMP_OK if \p resumed has been written
+ * \retval IOPMP_ERR_INVALID_PARAMETER if given \p resumed is NULL
  * \retval IOPMP_ERR_NOT_SUPPORTED if \p iopmp does not support stall
  * \retval IOPMP_ERR_NOT_EXIST if \p iopmp did not resume any transactions by
  *         iopmp_resume_transactions()
  */
-enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling);
+enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling,
+                                                bool *resumed);
 
 /**
  * \brief Select or deselect the transactions with specific RRIDs to stall
