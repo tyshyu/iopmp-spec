@@ -1062,6 +1062,71 @@ enum iopmp_error iopmp_set_srcmd_perm_cfg(IOPMP_SRCMD_PERM_CFG_t *cfg,
 }
 
 /**
+ * \brief (SPS only) Validate what every SPS setter shares, reading
+ * SRCMD_EN(rrid) once
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be set
+ * \param[in] mds_set           The desired MDs to set permission to \p rrid
+ * \param[in] mds_clr           The desired MDs to clear permission to \p rrid
+ *
+ * \retval IOPMP_OK if the request may be applied
+ * \retval IOPMP_ERR_OUT_OF_BOUNDS if given \p rrid or the MD bitmaps are out
+ *         of bounds
+ * \retval IOPMP_ERR_REG_IS_LOCKED if a selected MD has been locked by MDLCK,
+ *         or SRCMD_EN(rrid) has been locked by SRCMD_EN.l
+ */
+static enum iopmp_error __sps_check(IOPMP_t *iopmp, uint32_t rrid,
+                                    uint64_t mds_set, uint64_t mds_clr)
+{
+    uint64_t valid_mds, srcmd_mds;
+    bool is_srcmd_en_locked;
+
+    if (rrid >= iopmp->rrid_num)
+        return IOPMP_ERR_OUT_OF_BOUNDS;
+
+    valid_mds = GENMASK_64((iopmp->md_num - 1), 0);
+    if (mds_set > valid_mds || mds_clr > valid_mds)
+        return IOPMP_ERR_OUT_OF_BOUNDS;
+
+    /* One of selected MDs has been locked by MDLCK */
+    if (iopmp->mdlck_md & (mds_set | mds_clr))
+        return IOPMP_ERR_REG_IS_LOCKED;
+
+    /* Get current SRCMD_EN(rrid) */
+    assert(iopmp->ops_specific->get_association_rrid_md);
+    iopmp->ops_specific->get_association_rrid_md(iopmp, rrid, &srcmd_mds,
+                                                 &is_srcmd_en_locked);
+
+    return is_srcmd_en_locked ? IOPMP_ERR_REG_IS_LOCKED : IOPMP_OK;
+}
+
+/**
+ * \brief (SPS only) Write one of SRCMD_{R|W|X}(rrid), assuming __sps_check()
+ * has already accepted \p rrid, \p mds_set and \p mds_clr
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual values
+ */
+static enum iopmp_error __sps_apply(
+    IOPMP_t *iopmp, uint32_t rrid, uint64_t mds_set, uint64_t mds_clr,
+    uint64_t *mds, uint64_t (*fp_get_srcmd_rwx_64)(IOPMP_t *, uint32_t),
+    enum iopmp_error (*fp_set_srcmd_rwx_64)(IOPMP_t *, uint32_t , uint64_t *))
+{
+    assert(fp_get_srcmd_rwx_64);
+    *mds = fp_get_srcmd_rwx_64(iopmp, rrid);
+
+    /* Set new MD bitmap */
+    *mds |= mds_set;
+    /* Clear new MD bitmap */
+    *mds &= ~mds_clr;
+
+    assert(fp_set_srcmd_rwx_64);
+    return fp_set_srcmd_rwx_64(iopmp, rrid, mds);
+}
+
+/**
  * \brief (SPS only) Set RRID's read/write/instruction fetch permission to MDs
  *
  * \param[in] iopmp             The IOPMP instance
@@ -1077,6 +1142,7 @@ enum iopmp_error iopmp_set_srcmd_perm_cfg(IOPMP_SRCMD_PERM_CFG_t *cfg,
  *
  * \retval IOPMP_OK if successes
  * \retval IOPMP_ERR_OUT_OF_BOUNDS if given \p rrid or \p mds is out of bounds
+ * \retval IOPMP_ERR_INVALID_PARAMETER if given \p mds is NULL
  * \retval IOPMP_ERR_REG_IS_LOCKED if register has been locked by SRCMD_EN.l
  * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
  *         actual values
@@ -1086,8 +1152,7 @@ static enum iopmp_error __sps_set(
     uint64_t *mds, uint64_t (*fp_get_srcmd_rwx_64)(IOPMP_t *, uint32_t),
     enum iopmp_error (*fp_set_srcmd_rwx_64)(IOPMP_t *, uint32_t , uint64_t *))
 {
-    uint64_t valid_mds, srcmd_mds;
-    bool is_srcmd_en_locked;
+    enum iopmp_error ret;
 
     if (rrid >= iopmp->rrid_num)
         return IOPMP_ERR_OUT_OF_BOUNDS;
@@ -1095,32 +1160,12 @@ static enum iopmp_error __sps_set(
     if (!mds)
         return IOPMP_ERR_INVALID_PARAMETER;
 
-    valid_mds = GENMASK_64((iopmp->md_num - 1), 0);
-    if (mds_set > valid_mds || mds_clr > valid_mds)
-        return IOPMP_ERR_OUT_OF_BOUNDS;
+    ret = __sps_check(iopmp, rrid, mds_set, mds_clr);
+    if (ret != IOPMP_OK)
+        return ret;
 
-    /* One of selected MDs has been locked by MDLCK */
-    if (iopmp->mdlck_md & (mds_set | mds_clr))
-        return IOPMP_ERR_REG_IS_LOCKED;
-
-    /* Get current SRCMD_EN(rrid) */
-    assert(iopmp->ops_specific->get_association_rrid_md);
-    iopmp->ops_specific->get_association_rrid_md(iopmp, rrid, &srcmd_mds,
-                                                 &is_srcmd_en_locked);
-
-    if (is_srcmd_en_locked)
-        return IOPMP_ERR_REG_IS_LOCKED;
-
-    assert(fp_get_srcmd_rwx_64);
-    *mds = fp_get_srcmd_rwx_64(iopmp, rrid);
-
-    /* Set new MD bitmap */
-    *mds |= mds_set;
-    /* Clear new MD bitmap */
-    *mds &= ~mds_clr;
-
-    assert(fp_set_srcmd_rwx_64);
-    return fp_set_srcmd_rwx_64(iopmp, rrid, mds);
+    return __sps_apply(iopmp, rrid, mds_set, mds_clr, mds,
+                       fp_get_srcmd_rwx_64, fp_set_srcmd_rwx_64);
 }
 
 /**
@@ -1248,21 +1293,35 @@ enum iopmp_error iopmp_sps_set_rrid_md_rwx(IOPMP_t *iopmp, uint32_t rrid,
     if (!iopmp_get_support_sps(iopmp))
         return IOPMP_ERR_NOT_SUPPORTED;
 
-    ret = __sps_set(iopmp, rrid, mds_set_r, mds_clr_r, mds_r,
-                     iopmp->ops_sps->sps_get_srcmd_r_64_md,
-                     iopmp->ops_sps->sps_set_srcmd_r_64_md);
+    if (!mds_r || !mds_w || !mds_x)
+        return IOPMP_ERR_INVALID_PARAMETER;
+
+    /*
+     * The three permissions share one set of constraints, so validate their
+     * union once. It reads SRCMD_EN(rrid) a single time instead of once per
+     * permission, and leaves the IOPMP untouched if any of them is rejected.
+     */
+    ret = __sps_check(iopmp, rrid,
+                      mds_set_r | mds_set_w | mds_set_x,
+                      mds_clr_r | mds_clr_w | mds_clr_x);
     if (ret != IOPMP_OK)
         return ret;
 
-    ret = __sps_set(iopmp, rrid, mds_set_w, mds_clr_w, mds_w,
-                    iopmp->ops_sps->sps_get_srcmd_w_64_md,
-                    iopmp->ops_sps->sps_set_srcmd_w_64_md);
+    ret = __sps_apply(iopmp, rrid, mds_set_r, mds_clr_r, mds_r,
+                      iopmp->ops_sps->sps_get_srcmd_r_64_md,
+                      iopmp->ops_sps->sps_set_srcmd_r_64_md);
     if (ret != IOPMP_OK)
         return ret;
 
-    return __sps_set(iopmp, rrid, mds_set_x, mds_clr_x, mds_x,
-                     iopmp->ops_sps->sps_get_srcmd_x_64_md,
-                     iopmp->ops_sps->sps_set_srcmd_x_64_md);
+    ret = __sps_apply(iopmp, rrid, mds_set_w, mds_clr_w, mds_w,
+                      iopmp->ops_sps->sps_get_srcmd_w_64_md,
+                      iopmp->ops_sps->sps_set_srcmd_w_64_md);
+    if (ret != IOPMP_OK)
+        return ret;
+
+    return __sps_apply(iopmp, rrid, mds_set_x, mds_clr_x, mds_x,
+                       iopmp->ops_sps->sps_get_srcmd_x_64_md,
+                       iopmp->ops_sps->sps_set_srcmd_x_64_md);
 }
 
 enum iopmp_error iopmp_sps_get_rrid_md_rwx(IOPMP_t *iopmp, uint32_t rrid,
