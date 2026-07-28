@@ -64,6 +64,12 @@ struct iopmp_instance {
     /** When mdcfg_fmt={1,2}, indicate each MD has (md_entry_num+1) entries */
     uint8_t md_entry_num;
 
+    /**
+     * MDs that MDSTALL(H) can select. Every implemented MD until
+     * iopmp_probe_stall_by_md() narrows it down
+     */
+    uint64_t stall_md_mask;
+
     /** Cache of MDLCK.l */
     uint8_t mdlck_lock;
     /** Cache of MDLCK.md */
@@ -163,8 +169,6 @@ struct iopmp_instance {
         unsigned int stall_violation_en : 1;
         /** Flag to indicate if stall by RRID is supported */
         unsigned int support_stall_by_rrid : 1;
-        /** Flag to indicate if stall by MD is supported */
-        unsigned int support_stall_by_md : 1;
         /** Flag to indicate if IOPMP is stalling some transactions */
         unsigned int is_stalling : 1;
     };
@@ -808,6 +812,11 @@ static inline bool iopmp_get_no_w(IOPMP_t *iopmp)
  *
  * \retval 1 if HWCFG2.stall_en = 1
  * \retval 0 if HWCFG2.stall_en = 0
+ *
+ * \note HWCFG2.stall_en covers MDSTALL(H), RRIDSCP and
+ *       ERR_CFG.stall_violation_en together. Use
+ *       iopmp_get_support_stall_by_rrid() and iopmp_probe_stall_by_md() to
+ *       narrow it down
  */
 static inline bool iopmp_get_support_stall(IOPMP_t *iopmp)
 {
@@ -926,19 +935,6 @@ static inline uint32_t iopmp_get_entry_num(IOPMP_t *iopmp)
 static inline uint16_t iopmp_get_prio_entry_num(IOPMP_t *iopmp)
 {
     return iopmp->prio_entry_num;
-}
-
-/**
- * \brief Check if the IOPMP implements stall-related features of MDSTALL(H)
- *
- * \param[in] iopmp             The IOPMP instance to be checked
- *
- * \retval 1 if MDSTALL(H) are implemented
- * \retval 0 if MDSTALL(H) are not implemented
- */
-static inline bool iopmp_get_support_stall_by_md(IOPMP_t *iopmp)
-{
-    return iopmp->support_stall_by_md;
 }
 
 /**
@@ -1367,10 +1363,16 @@ enum iopmp_error iopmp_set_rrid_transl(IOPMP_t *iopmp, uint16_t *rrid_transl);
  *
  * \retval IOPMP_OK if successes
  * \retval IOPMP_ERR_NOT_SUPPORTED if \p iopmp does not support stall
+ * \retval IOPMP_ERR_INVALID_PARAMETER if given \p mds is NULL
  * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
  *         actual value. The actual value is output via \p mds
  * \retval IOPMP_ERR_NOT_ALLOWED if MDSTALL has already been written and
  *         libiopmp expects user resumes the transactions first
+ *
+ * \note An MD that MDSTALL(H) can not select is rejected before the write, so
+ *       the IOPMP is left untouched. iopmp_probe_stall_by_md() teaches
+ *       libiopmp which MDs those are; until it runs, every implemented MD is
+ *       assumed selectable and the read-back catches the rest
  */
 enum iopmp_error iopmp_stall_transactions_by_mds(IOPMP_t *iopmp, uint64_t *mds,
                                                  bool exempt, bool polling);
@@ -1427,6 +1429,27 @@ enum iopmp_error iopmp_transactions_are_stalled(IOPMP_t *iopmp, bool polling,
  */
 enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling,
                                                 bool *resumed);
+
+/**
+ * \brief Detect which MDs can be selected by MDSTALL and MDSTALLH
+ *
+ * An IOPMP need not make every implemented MD selectable, so this writes all
+ * ones into MDSTALL.md and MDSTALLH.mdh, reads them back, and resumes.
+ *
+ * \param[in] iopmp             The IOPMP instance to be probed
+ * \param[out] mds              Bitmap of the MDs that MDSTALL(H) can select
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_NOT_SUPPORTED if HWCFG2.stall_en is 0
+ * \retval IOPMP_ERR_INVALID_PARAMETER if given \p mds is NULL
+ * \retval IOPMP_ERR_NOT_ALLOWED if \p iopmp is already stalling transactions
+ *
+ * \note The probe stalls the transactions of the selected MDs for as long as
+ *       it runs. Call it while that is acceptable, typically before
+ *       HWCFG0.enable is set. If ERR_CFG.stall_violation_en is 1, the stalled
+ *       transactions fault rather than wait.
+ */
+enum iopmp_error iopmp_probe_stall_by_md(IOPMP_t *iopmp, uint64_t *mds);
 
 /**
  * \brief Select or deselect the transactions with specific RRIDs to stall

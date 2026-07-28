@@ -2247,7 +2247,7 @@ int main(void)
     END_TEST();
 
     START_TEST("Check stall-related features are detected");
-    FAIL_IF(iopmp_get_support_stall_by_md(&iopmp) != iopmp_dev.reg_file.hwcfg2.stall_en);
+    FAIL_IF(iopmp_get_support_stall(&iopmp) != iopmp_dev.reg_file.hwcfg2.stall_en);
     FAIL_IF(iopmp_get_support_stall_by_rrid(&iopmp) != iopmp_dev.imp_rridscp);
     END_TEST();
 
@@ -3030,6 +3030,61 @@ int main(void)
     FAIL_IF(iopmp_resume_transactions(&iopmp, false) != IOPMP_ERR_NOT_ALLOWED);
     END_TEST();
 
+    START_TEST("Probe which MDs MDSTALL can select");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    ret = iopmp_probe_stall_by_md(&iopmp, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != (((uint64_t)1 << CFG_MD_NUM) - 1));
+    /* The probe must not leave anything stalled */
+    val_u64 = 0x8;
+    FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, true) != IOPMP_OK);
+    FAIL_IF(iopmp_resume_transactions(&iopmp, true) != IOPMP_OK);
+    END_TEST();
+
+    START_TEST("Probe reports only the implemented MDs");
+    cfg.md_num = 8;
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    ret = iopmp_probe_stall_by_md(&iopmp, &val_u64);
+    FAIL_IF(ret != IOPMP_OK);
+    FAIL_IF(val_u64 != 0xFF);
+    /* The probe result is cached, so an unselectable MD is now rejected
+     * without writing MDSTALL at all */
+    val_u64 = 0x100;
+    ret = iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, false);
+    FAIL_IF(ret != IOPMP_ERR_ILLEGAL_VALUE);
+    FAIL_IF(val_u64 != 0);          /* none of the request was selectable */
+    FAIL_IF(read_register(&iopmp_dev, MDSTALL_OFFSET, 4) != 0);
+    /* ... and the rejection left nothing stalled, so a legal one still works */
+    val_u64 = 0x81;
+    FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, true) != IOPMP_OK);
+    FAIL_IF(val_u64 != 0x81);
+    FAIL_IF(iopmp_resume_transactions(&iopmp, true) != IOPMP_OK);
+    cfg.md_num = CFG_MD_NUM;
+    END_TEST();
+
+    START_TEST("Stall a partially selectable MD bitmap");
+    cfg.md_num = 8;
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    FAIL_IF(iopmp_probe_stall_by_md(&iopmp, &val_u64) != IOPMP_OK);
+    /* Bit 3 is selectable, bit 9 is not */
+    val_u64 = 0x208;
+    ret = iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, false);
+    FAIL_IF(ret != IOPMP_ERR_ILLEGAL_VALUE);
+    FAIL_IF(val_u64 != 0x8);        /* the selectable subset is reported */
+    cfg.md_num = CFG_MD_NUM;
+    END_TEST();
+
+    START_TEST("Probe MDSTALL with invalid arguments");
+    FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+    FAIL_IF(iopmp_probe_stall_by_md(&iopmp, NULL) != IOPMP_ERR_INVALID_PARAMETER);
+    FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, NULL, false, false) != IOPMP_ERR_INVALID_PARAMETER);
+    /* Probing in the middle of a stall is not allowed */
+    val_u64 = 0x8;
+    FAIL_IF(iopmp_stall_transactions_by_mds(&iopmp, &val_u64, false, true) != IOPMP_OK);
+    FAIL_IF(iopmp_probe_stall_by_md(&iopmp, &val_u64) != IOPMP_ERR_NOT_ALLOWED);
+    FAIL_IF(iopmp_resume_transactions(&iopmp, true) != IOPMP_OK);
+    END_TEST();
+
     START_TEST("Poll the stall status with invalid arguments");
     FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
     val_u64 = 0x8;
@@ -3074,7 +3129,6 @@ int main(void)
     cfg.imp_rridscp = false;
     cfg.imp_stall_buffer = false;
     FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
-    FAIL_IF(iopmp_get_support_stall_by_md(&iopmp) != false);
     FAIL_IF(iopmp_get_support_stall_by_rrid(&iopmp) != false);
     FAIL_IF(iopmp_get_support_stall(&iopmp) != false);
     val_u64 = 0x8;
@@ -3084,6 +3138,7 @@ int main(void)
     FAIL_IF(iopmp_stall_cherry_pick_rrid(&iopmp, &val_u32, true, &stat) != IOPMP_ERR_NOT_SUPPORTED);
     val_bool = true;
     FAIL_IF(iopmp_set_stall_violation_en(&iopmp, &val_bool) != IOPMP_ERR_NOT_SUPPORTED);
+    FAIL_IF(iopmp_probe_stall_by_md(&iopmp, &val_u64) != IOPMP_ERR_NOT_SUPPORTED);
     cfg.stall_en = true;
     cfg.imp_rridscp = true;
     cfg.imp_stall_buffer = true;

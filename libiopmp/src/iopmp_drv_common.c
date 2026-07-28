@@ -432,7 +432,8 @@ static void detect_stall_function(IOPMP_t *iopmp)
      * which are MDSTALL, MDSTALLH, and RRIDSCP registers.
      */
     if (iopmp->stall_en) {
-        iopmp->support_stall_by_md = true;
+        /* Assume all MDs selectable; iopmp_probe_stall_by_md() narrows it */
+        iopmp->stall_md_mask = GENMASK_64((iopmp->md_num - 1), 0);
         /*
          * If RRIDSCP is not implemented, it always returns zero. One can test
          * if it is implemented by writing a zero and then reading it back. Any
@@ -445,7 +446,7 @@ static void detect_stall_function(IOPMP_t *iopmp)
         else
             iopmp->support_stall_by_rrid = false;
     } else {
-        iopmp->support_stall_by_md = false;
+        iopmp->stall_md_mask = 0;
         iopmp->support_stall_by_rrid = false;
     }
 }
@@ -462,7 +463,7 @@ enum iopmp_error detect_entry_addr_bits(IOPMP_t *iopmp)
     /*Search for an unlocked and unused entry that we can safely use to detect*/
     for (i = entrylck_f; i < iopmp->entry_num; i++) {
         entry = get_addr_of_entry(iopmp, i);
-        /* Read the fields one by one so that a used entry costs a single read */
+        /* One read per field, so a used entry costs a single read */
         if (io_read32(entry + IOPMP_ENTRY_CFG_BASE))
             continue;
         if (io_read32(entry + IOPMP_ENTRY_ADDR_BASE))

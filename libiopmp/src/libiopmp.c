@@ -272,7 +272,7 @@ enum iopmp_error iopmp_stall_transactions_by_mds(IOPMP_t *iopmp, uint64_t *mds,
 
     assert(iopmp_is_initialized(iopmp));
 
-    if (!iopmp->support_stall_by_md)
+    if (!iopmp->stall_en)
         return IOPMP_ERR_NOT_SUPPORTED;
 
     /*
@@ -284,6 +284,19 @@ enum iopmp_error iopmp_stall_transactions_by_mds(IOPMP_t *iopmp, uint64_t *mds,
      */
     if (iopmp->is_stalling)
         return IOPMP_ERR_NOT_ALLOWED;
+
+    if (!mds)
+        return IOPMP_ERR_INVALID_PARAMETER;
+
+    /*
+     * Catch an unselectable MD here rather than through the read-back below.
+     * Writing MDSTALL stalls transactions, so letting the write go ahead would
+     * disturb traffic only to undo it again.
+     */
+    if (*mds & ~iopmp->stall_md_mask) {
+        *mds &= iopmp->stall_md_mask;
+        return IOPMP_ERR_ILLEGAL_VALUE;
+    }
 
     assert(iopmp->ops_generic->stall_by_mds);
     ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, exempt, polling);
@@ -299,7 +312,7 @@ enum iopmp_error iopmp_resume_transactions(IOPMP_t *iopmp, bool polling)
 
     assert(iopmp_is_initialized(iopmp));
 
-    if (!iopmp->support_stall_by_md)
+    if (!iopmp->stall_en)
         return IOPMP_ERR_NOT_SUPPORTED;
 
     /* We forbid the operation if IOPMP was not stalling any transactions */
@@ -321,7 +334,7 @@ static enum iopmp_error __iopmp_poll_mdstall(IOPMP_t *iopmp,
 {
     assert(iopmp_is_initialized(iopmp));
 
-    if (!iopmp->support_stall_by_md)
+    if (!iopmp->stall_en)
         return IOPMP_ERR_NOT_SUPPORTED;
 
     if (!done)
@@ -349,6 +362,43 @@ enum iopmp_error iopmp_transactions_are_resumed(IOPMP_t *iopmp, bool polling,
         return IOPMP_ERR_NOT_EXIST;
 
     return __iopmp_poll_mdstall(iopmp, polling, false, resumed);
+}
+
+enum iopmp_error iopmp_probe_stall_by_md(IOPMP_t *iopmp, uint64_t *mds)
+{
+    enum iopmp_error ret;
+
+    assert(iopmp_is_initialized(iopmp));
+
+    if (!iopmp->stall_en)
+        return IOPMP_ERR_NOT_SUPPORTED;
+
+    if (!mds)
+        return IOPMP_ERR_INVALID_PARAMETER;
+
+    /* The probe stalls and then resumes, which MDSTALL forbids in the middle
+     * of a stall that is already in progress */
+    if (iopmp->is_stalling)
+        return IOPMP_ERR_NOT_ALLOWED;
+
+    assert(iopmp->ops_generic->stall_by_mds);
+    *mds = GENMASK_64((iopmp->md_num - 1), 0);
+    ret = iopmp->ops_generic->stall_by_mds(iopmp, mds, false, false);
+    if (ret == IOPMP_OK) {
+        /* Every MD was accepted, so undo the stall the probe just caused */
+        assert(iopmp->ops_generic->resume_transactions);
+        ret = iopmp->ops_generic->resume_transactions(iopmp, true);
+    } else if (ret == IOPMP_ERR_ILLEGAL_VALUE) {
+        /* A narrower read-back is the answer, not a failure, and
+         * stall_by_mds() has already resumed on our behalf */
+        ret = IOPMP_OK;
+    }
+
+    if (ret == IOPMP_OK) {
+        iopmp->stall_md_mask = *mds;
+    }
+
+    return ret;
 }
 
 /**
