@@ -114,14 +114,13 @@ int main(void)
     /* Start unit tests */
 
 #if (SRC_ENFORCEMENT_EN == 0)
-    bool val_bool;
+    bool val_bool, val_bool_2;
     IOPMP_ERR_REPORT_t err_report = {0};
     IOPMP_SRCMD_PERM_CFG_t perm_cfg;
     struct iopmp_entry rb_entries[8] = {0};
     uint64_t val_u64_2, val_u64_3;
     uint32_t val_u32_2;
     uint16_t val_u16;
-    bool val_bool_2;
 
     START_TEST("Test OFF - Read Access permissions");
     reset_iopmp(&iopmp_dev, &cfg);
