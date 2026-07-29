@@ -1155,6 +1155,17 @@ static enum iopmp_error __sps_check(IOPMP_t *iopmp, uint32_t rrid,
  * \brief (SPS only) Write one of SRCMD_{R|W|X}(rrid), assuming __sps_check()
  * has already accepted \p rrid, \p mds_set and \p mds_clr
  *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be set
+ * \param[in] mds_set           The desired MDs to set permission to \p rrid
+ * \param[in] mds_clr           The desired MDs to clear permission to \p rrid
+ * \param[out] mds              The pointer to an integer to store WARL value of
+ *                              SRCMD_{R|W|X}.md after setting
+ * \param[in] fp_get_srcmd_rwx_64   The function pointer to SPS operation to get
+ *                                  value of SRCMD_{R|W|X}
+ * \param[in] fp_set_srcmd_rwx_64   The function pointer to SPS operation to set
+ *                                  value of SRCMD_{R|W|X}
+ *
  * \retval IOPMP_OK if successes
  * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
  *         actual values
