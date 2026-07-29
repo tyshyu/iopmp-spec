@@ -660,4 +660,94 @@ enum iopmp_error generic_set_stall_violation_en(IOPMP_t *iopmp, bool *enable);
 enum iopmp_error generic_stall_by_mds(IOPMP_t *iopmp, uint64_t *mds,
                                       bool exempt, bool polling);
 
+/******************************************************************************/
+/* SPS extension operations                                                   */
+/******************************************************************************/
+
+/**
+ * \brief Get RRID's read permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be got
+ *
+ * \return SRCMD_RH(rrid).mdh | SRCMD_R(rrid).md
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+uint64_t ext_sps_get_srcmd_r_64_md(IOPMP_t *iopmp, uint32_t rrid);
+
+/**
+ * \brief Set RRID's read permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be set
+ * \param[in,out] mds           Input the read permission bitmap associated with
+ *                              \p rrid. Output WARL value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual values
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+enum iopmp_error ext_sps_set_srcmd_r_64_md(IOPMP_t *iopmp, uint32_t rrid,
+                                           uint64_t *mds);
+
+/**
+ * \brief Get RRID's write permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be got
+ *
+ * \return SRCMD_WH(rrid).mdh | SRCMD_W(rrid).md
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+uint64_t ext_sps_get_srcmd_w_64_md(IOPMP_t *iopmp, uint32_t rrid);
+
+/**
+ * \brief Set RRID's write permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be set
+ * \param[in,out] mds           Input the write permission bitmap associated
+ *                              with \p rrid. Output WARL value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual values
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+enum iopmp_error ext_sps_set_srcmd_w_64_md(IOPMP_t *iopmp, uint32_t rrid,
+                                           uint64_t *mds);
+
+/**
+ * \brief Get RRID's instruction fetch permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be got
+ *
+ * \return SRCMD_XH(rrid).mdh | SRCMD_X(rrid).md
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+uint64_t ext_sps_get_srcmd_x_64_md(IOPMP_t *iopmp, uint32_t rrid);
+
+/**
+ * \brief Set RRID's instruction fetch permission to MD(0) ~ MD(62)
+ *
+ * \param[in] iopmp             The IOPMP instance
+ * \param[in] rrid              The RRID to be set
+ * \param[in,out] mds           Input the instruction fetch permission bitmap
+ *                              associated with \p rrid. Output WARL value
+ *
+ * \retval IOPMP_OK if successes
+ * \retval IOPMP_ERR_ILLEGAL_VALUE if the written \p mds does not match the
+ *         actual values
+ *
+ * \note This operation is only supported by IOPMP/SPS extension
+ */
+enum iopmp_error ext_sps_set_srcmd_x_64_md(IOPMP_t *iopmp, uint32_t rrid,
+                                           uint64_t *mds);
 #endif

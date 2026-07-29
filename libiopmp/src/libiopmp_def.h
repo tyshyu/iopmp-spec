@@ -167,23 +167,4 @@ struct iopmp_operations_specific {
                                          uint32_t *md_entry_num);
 };
 
-/** Structure represents the operations for SPS extension */
-struct iopmp_operations_sps {
-    /** Get 64-bit value of {SRCMD_RH(rrid), SRCMD_R(rrid)}.md */
-    uint64_t (*sps_get_srcmd_r_64_md)(IOPMP_t *iopmp, uint32_t rrid);
-    /** Set 64-bit value of {SRCMD_RH(rrid), SRCMD_R(rrid)}.md */
-    enum iopmp_error (*sps_set_srcmd_r_64_md)(IOPMP_t *iopmp, uint32_t rrid,
-                                              uint64_t *mds);
-    /** Get 64-bit value of {SRCMD_WH(rrid), SRCMD_W(rrid)}.md */
-    uint64_t (*sps_get_srcmd_w_64_md)(IOPMP_t *iopmp, uint32_t rrid);
-    /** Set 64-bit value of {SRCMD_WH(rrid), SRCMD_W(rrid)}.md */
-    enum iopmp_error (*sps_set_srcmd_w_64_md)(IOPMP_t *iopmp, uint32_t rrid,
-                                              uint64_t *mds);
-    /** Get 64-bit value of {SRCMD_XH(rrid), SRCMD_X(rrid)}.md */
-    uint64_t (*sps_get_srcmd_x_64_md)(IOPMP_t *iopmp, uint32_t rrid);
-    /** Set 64-bit value of {SRCMD_XH(rrid), SRCMD_X(rrid)}.md */
-    enum iopmp_error (*sps_set_srcmd_x_64_md)(IOPMP_t *iopmp, uint32_t rrid,
-                                              uint64_t *mds);
-};
-
 #endif  /* __LIBIOPMP_DEF_H__ */

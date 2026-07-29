@@ -51,10 +51,6 @@ CFLAGS	+= --coverage
 CFLAGS	+= -DENABLE_IO_WEAK_FUNCTIONS
 endif
 
-ifeq ($(CFG_IOPMP_DRV_SPS_EXTENSION),y)
-CFLAGS	+= -DENABLE_SPS
-endif
-
 ARFLAGS	= rcs
 
 # Check if verbosity is ON for build process

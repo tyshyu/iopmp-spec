@@ -39,8 +39,6 @@ compiling of driver for SRCMD_FMT=2 & MDCFG_FMT=0
 compiling of driver for SRCMD_FMT=2 & MDCFG_FMT=1
 * `CFG_IOPMP_DRV_SRCMD_FMT_2_MDCFG_FMT_2`: Turn on this option to enable
 compiling of driver for SRCMD_FMT=2 & MDCFG_FMT=2
-* `CFG_IOPMP_DRV_SPS_EXTENSION`: Turn on this option to enable compiling of
-driver for Secondary Permission Setting (SPS) extension
 
 ## Compilation
 

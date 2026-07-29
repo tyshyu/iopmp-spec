@@ -39,8 +39,6 @@ struct iopmp_instance {
     struct iopmp_operations_generic *ops_generic;
     /** Operations for specific model */
     struct iopmp_operations_specific *ops_specific;
-    /** Operations for model supports SPS extension */
-    struct iopmp_operations_sps *ops_sps;
 
     /** Base MMIO physical address of IOPMP entries */
     uintptr_t addr_entry_array;
@@ -731,12 +729,12 @@ static inline bool iopmp_get_support_tor(IOPMP_t *iopmp)
  *
  * \param[in] iopmp             The IOPMP instance to be checked
  *
- * \retval 1 if HWCFG2.sps_en = 1 and the SPS operations are implemented
+ * \retval 1 if HWCFG2.sps_en = 1
  * \retval 0 if HWCFG2.sps_en = 0
  */
 static inline bool iopmp_get_support_sps(IOPMP_t *iopmp)
 {
-    return iopmp->sps_en && iopmp->ops_sps;
+    return iopmp->sps_en;
 }
 
 /**

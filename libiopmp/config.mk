@@ -30,6 +30,3 @@ CFG_IOPMP_DRV_SRCMD_FMT_2_MDCFG_FMT_1=y
 
 # Set to 'y' to enable compiling of driver for SRCMD_FMT=2 & MDCFG_FMT=2
 CFG_IOPMP_DRV_SRCMD_FMT_2_MDCFG_FMT_2=y
-
-# Set to 'y' to enable compiling of driver for SPS(Secondary Permission Setting)
-CFG_IOPMP_DRV_SPS_EXTENSION=y
