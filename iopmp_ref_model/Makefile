@@ -60,7 +60,15 @@ MODELS := full_model:fullmodel.c \
           unnamed_model_4:unnamed_model_4.c
 else
 MODELS := libiopmp_INFO:libiopmp_INFO.c \
-          libiopmp_full_model:libiopmp_fullmodel.c
+          libiopmp_full_model:libiopmp_fullmodel.c \
+          libiopmp_isolation:libiopmp_isolation.c \
+          libiopmp_compact_k:libiopmp_compact_k.c \
+          libiopmp_srcmd_fmt_1_mdcfg_fmt_2:libiopmp_srcmd_fmt_1_mdcfg_fmt_2.c \
+          libiopmp_rapid_k:libiopmp_rapid_k.c \
+          libiopmp_dynamic_k:libiopmp_dynamic_k.c \
+          libiopmp_srcmd_fmt_2_mdcfg_fmt_0:libiopmp_srcmd_fmt_2_mdcfg_fmt_0.c \
+          libiopmp_srcmd_fmt_2_mdcfg_fmt_1:libiopmp_srcmd_fmt_2_mdcfg_fmt_1.c \
+          libiopmp_srcmd_fmt_2_mdcfg_fmt_2:libiopmp_srcmd_fmt_2_mdcfg_fmt_2.c
 endif
 
 # Targets
@@ -177,8 +185,16 @@ help:
 	@echo "  unnamed_model_4       SRCMD_FMT = 2, MDCFG_FMT = 2"
 	@echo ""
 	@echo "Available libiopmp test programs:"
-	@echo "  libiopmp_INFO         SRCMD_FMT = 0, MDCFG_FMT = 0"
-	@echo "  libiopmp_full_model   SRCMD_FMT = 0, MDCFG_FMT = 0"
+	@echo "  libiopmp_INFO                     SRCMD_FMT = 0, MDCFG_FMT = 0"
+	@echo "  libiopmp_full_model               SRCMD_FMT = 0, MDCFG_FMT = 0"
+	@echo "  libiopmp_rapid_k                  SRCMD_FMT = 0, MDCFG_FMT = 1"
+	@echo "  libiopmp_dynamic_k                SRCMD_FMT = 0, MDCFG_FMT = 2"
+	@echo "  libiopmp_isolation                SRCMD_FMT = 1, MDCFG_FMT = 0"
+	@echo "  libiopmp_compact_k                SRCMD_FMT = 1, MDCFG_FMT = 1"
+	@echo "  libiopmp_srcmd_fmt_1_mdcfg_fmt_2  SRCMD_FMT = 1, MDCFG_FMT = 2"
+	@echo "  libiopmp_srcmd_fmt_2_mdcfg_fmt_0  SRCMD_FMT = 2, MDCFG_FMT = 0"
+	@echo "  libiopmp_srcmd_fmt_2_mdcfg_fmt_1  SRCMD_FMT = 2, MDCFG_FMT = 1"
+	@echo "  libiopmp_srcmd_fmt_2_mdcfg_fmt_2  SRCMD_FMT = 2, MDCFG_FMT = 2"
 	@echo ""
 
 # Clean the binary and library directories
