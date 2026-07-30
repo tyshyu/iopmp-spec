@@ -28,7 +28,7 @@ LIBIOPMP_PREREQ =
 ifeq ($(libiopmp), 1)
 # Enable coverage analysis
 cov = 1
-LIBIOPMP_CFLAGS += -I$(LIBIOPMP_DIR)/include
+LIBIOPMP_CFLAGS += -I$(LIBIOPMP_DIR)/include -I$(LIBIOPMP_DIR)/src
 LIBIOPMP_LDFLAGS += $(LIBIOPMP) -lgcov
 # Prerequisite
 LIBIOPMP_PREREQ += $(LIBIOPMP)

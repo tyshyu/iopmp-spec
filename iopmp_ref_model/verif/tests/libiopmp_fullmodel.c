@@ -3,6 +3,7 @@
 #include "test_utils.h"
 
 #include "libiopmp.h"
+#include "libiopmp_def.h"
 
 // Declarations
 iopmp_trans_req_t iopmp_trans_req;
@@ -37,6 +38,23 @@ static enum iopmp_error libiopmp_setup(IOPMP_t *iopmp, iopmp_cfg_t *cfg)
     return iopmp_init(iopmp, 0, cfg->srcmd_fmt, cfg->mdcfg_fmt,
                       IOPMP_IMPID_NOT_SPECIFIED);
 }
+
+#if (SRC_ENFORCEMENT_EN == 0)
+/* A per-instance generic override, for the two-instance dispatch test. Only
+ * set_global_intr is filled in, so every other operation has to fall back. */
+static int fake_set_global_intr_hits;
+
+static void fake_set_global_intr(IOPMP_t *iopmp, bool enable)
+{
+    (void)iopmp;
+    (void)enable;
+    fake_set_global_intr_hits++;
+}
+
+static struct iopmp_operations_generic fake_ops_generic = {
+    .set_global_intr = fake_set_global_intr,
+};
+#endif
 
 #define CFG_MD_NUM          63
 #define CFG_ENTRY_NUM       512
@@ -3293,6 +3311,32 @@ int main(void)
     ret = iopmp_init(&iopmp, 0, IOPMP_SRCMD_FMT_1, IOPMP_MDCFG_FMT_0,
                      IOPMP_IMPID_NOT_SPECIFIED);
     FAIL_IF(ret != IOPMP_ERR_NOT_SUPPORTED);
+    END_TEST();
+
+    START_TEST("A generic override applies to one instance, not the others");
+    {
+        IOPMP_t iopmp_ovr;
+
+        /* Two instances in one image: one with an override, one without */
+        FAIL_IF(libiopmp_setup(&iopmp_ovr, &cfg) != IOPMP_OK);
+        iopmp_ovr.ops_generic = &fake_ops_generic;
+        FAIL_IF(libiopmp_setup(&iopmp, &cfg) != IOPMP_OK);
+
+        /* Member filled in: the override runs and ERR_CFG.ie stays clear */
+        fake_set_global_intr_hits = 0;
+        FAIL_IF(iopmp_set_global_intr(&iopmp_ovr, true) != IOPMP_OK);
+        FAIL_IF(fake_set_global_intr_hits != 1);
+        FAIL_IF(read_register(&iopmp_dev, ERR_CFG_OFFSET, 4) & 0x2);
+
+        /* ops_generic is NULL here, so the built-in runs and sets ERR_CFG.ie */
+        FAIL_IF(iopmp_set_global_intr(&iopmp, true) != IOPMP_OK);
+        FAIL_IF(fake_set_global_intr_hits != 1);
+        FAIL_IF(!(read_register(&iopmp_dev, ERR_CFG_OFFSET, 4) & 0x2));
+
+        /* Member left NULL: the override instance falls back to the built-in */
+        FAIL_IF(iopmp_lock_err_cfg(&iopmp_ovr) != IOPMP_OK);
+        FAIL_IF(!(read_register(&iopmp_dev, ERR_CFG_OFFSET, 4) & 0x1));
+    }
     END_TEST();
 #endif
 
