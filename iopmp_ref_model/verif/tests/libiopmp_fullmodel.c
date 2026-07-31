@@ -51,8 +51,17 @@ static void fake_set_global_intr(IOPMP_t *iopmp, bool enable)
     fake_set_global_intr_hits++;
 }
 
+static int fake_invalidate_error_hits;
+
+static void fake_invalidate_error(IOPMP_t *iopmp)
+{
+    (void)iopmp;
+    fake_invalidate_error_hits++;
+}
+
 static struct iopmp_operations_generic fake_ops_generic = {
     .set_global_intr = fake_set_global_intr,
+    .invalidate_error = fake_invalidate_error,
 };
 #endif
 
@@ -3336,6 +3345,32 @@ int main(void)
         /* Member left NULL: the override instance falls back to the built-in */
         FAIL_IF(iopmp_lock_err_cfg(&iopmp_ovr) != IOPMP_OK);
         FAIL_IF(!(read_register(&iopmp_dev, ERR_CFG_OFFSET, 4) & 0x1));
+    }
+    END_TEST();
+
+    START_TEST("capture_error dispatches an invalidate_error override");
+    {
+        IOPMP_t iopmp_ovr;
+
+        FAIL_IF(libiopmp_setup(&iopmp_ovr, &cfg) != IOPMP_OK);
+        iopmp_ovr.ops_generic = &fake_ops_generic;
+        /* RRID 2 is associated with a MD that owns no entry, so the access
+         * below hits no rule and leaves a record behind */
+        FAIL_IF(iopmp_set_rrid_md_association(&iopmp_ovr, 2, 0x8, 0, &val_u64,
+                                              false) != IOPMP_OK);
+        FAIL_IF(iopmp_set_enable(&iopmp_ovr) != IOPMP_OK);
+        receiver_port(2, 364, 0, 0, READ_ACCESS, 0, &iopmp_trans_req);
+        iopmp_validate_access(&iopmp_dev, &iopmp_trans_req, &iopmp_trans_rsp,
+                              &intrpt);
+        FAIL_IF(iopmp_trans_rsp.status != IOPMP_ERROR);
+
+        /* capture_error is the built-in here, but invalidate_error is not:
+         * the built-in has to reach the override rather than clear the record
+         * itself, so ERR_INFO.v survives */
+        fake_invalidate_error_hits = 0;
+        FAIL_IF(iopmp_capture_error(&iopmp_ovr, &err_report, true) != IOPMP_OK);
+        FAIL_IF(fake_invalidate_error_hits != 1);
+        FAIL_IF(!(read_register(&iopmp_dev, ERR_INFO_OFFSET, 4) & 0x1));
     }
     END_TEST();
 #endif

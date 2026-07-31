@@ -853,8 +853,14 @@ enum iopmp_error generic_capture_error(IOPMP_t *iopmp,
     err_report->etype = EXTRACT_FIELD(err_info, IOPMP_ERR_INFO_ETYPE);
     err_report->svc = EXTRACT_FIELD(err_info, IOPMP_ERR_INFO_SVC);
 
-    if (invalidate)
-        generic_invalidate_error(iopmp);
+    /* A driver may have replaced only invalidate_error, so honour it here */
+    if (invalidate) {
+        if (iopmp->ops_generic && iopmp->ops_generic->invalidate_error) {
+            iopmp->ops_generic->invalidate_error(iopmp);
+        } else {
+            generic_invalidate_error(iopmp);
+        }
+    }
 
     return IOPMP_OK;
 }
