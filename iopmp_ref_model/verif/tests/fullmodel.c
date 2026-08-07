@@ -886,6 +886,24 @@ int main()
     write_register(&iopmp, ERR_INFO_OFFSET, 0, 4);
     END_TEST();
 
+    START_TEST("An interrupt does not outlive the transaction that raised it");
+    // The transaction above raised one. This one is legal, so nothing raises
+    // an interrupt for it, and the flag must not still be reporting the last.
+    reset_iopmp(&iopmp, &cfg);
+    write_register(&iopmp, ERR_CFG_OFFSET, 0x2, 4);
+    configure_srcmd_n(&iopmp, SRCMD_ENH, 2, 0x1, 4);
+    configure_srcmd_n(&iopmp, SRCMD_XH, 2, 0x1, 4);
+    configure_mdcfg_n(&iopmp, 31, 2, 4);
+    configure_entry_n(&iopmp, ENTRY_ADDR, 1, 90, 4);
+    configure_entry_n(&iopmp, ENTRY_CFG, 1, (NAPOT | X), 4);
+    set_hwcfg0_enable(&iopmp);
+    receiver_port(2, 360, 0, 3, INSTR_FETCH, 0, &iopmp_trans_req);
+    // Requestor Port Signals
+    iopmp_validate_access(&iopmp, &iopmp_trans_req, &iopmp_trans_rsp, &intrpt);
+    FAIL_IF((intrpt != 0));
+    CHECK_IOPMP_TRANS(&iopmp, IOPMP_SUCCESS, ENTRY_MATCH);
+    END_TEST();
+
     START_TEST_IF(iopmp.reg_file.hwcfg2.pees, "Test Error Suppression is Enabled",
     // Receiver Port Signals
     reset_iopmp(&iopmp, &cfg);

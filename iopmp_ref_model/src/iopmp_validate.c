@@ -49,6 +49,9 @@ static iopmpErrorType_t perm_to_etype(perm_type_e perm)
   * @return iopmp_trans_rsp_t Response structure with transaction status.
  **/
 void iopmp_validate_access(iopmp_dev_t *iopmp, iopmp_trans_req_t *trans_req, iopmp_trans_rsp_t* iopmp_trans_rsp, uint8_t *intrpt) {
+    // No wired interrupt until an error capture below raises one
+    *intrpt = 0;
+
     iopmp_trans_rsp->rrid         = trans_req->rrid;
     iopmp_trans_rsp->rrid_stalled = 0;
     iopmp_trans_rsp->rrid_stalled_no_available_buffer = 0;
