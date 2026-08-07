@@ -1082,6 +1082,33 @@ int main()
     cfg.imp_stall_buffer = true;
     END_TEST();)
 
+    START_TEST_IF(iopmp.reg_file.hwcfg2.stall_en && iopmp.imp_rridscp,
+                  "A stalled transaction leaves no flag on the next one",
+    cfg.imp_stall_buffer = false;
+    reset_iopmp(&iopmp, &cfg);
+    configure_srcmd_n(&iopmp, SRCMD_EN, 5, 0x10, 4);
+    configure_srcmd_n(&iopmp, SRCMD_X, 5, 0x10, 4);
+    configure_mdcfg_n(&iopmp, 3, 2, 4);
+    configure_entry_n(&iopmp, ENTRY_ADDR, 1, 90, 4); // (364 >> 2) and keeping lsb 0
+    configure_entry_n(&iopmp, ENTRY_CFG, 1, (NAPOT | X), 4);
+    set_hwcfg0_enable(&iopmp);
+    write_register(&iopmp, MDSTALL_OFFSET, 0x10, 4);
+    receiver_port(5, 360, 0, 3, INSTR_FETCH, 0, &iopmp_trans_req);
+    // There is no buffer to queue the transaction in, and IOPMP doesn't fault
+    // stalled transactions either, so the transaction is truly stalled
+    iopmp_validate_access(&iopmp, &iopmp_trans_req, &iopmp_trans_rsp, &intrpt);
+    FAIL_IF((iopmp_trans_rsp.rrid_stalled_no_available_buffer != 1));
+    // The flag describes the transaction that was stalled, not every later one
+    // answered through the same response structure
+    write_register(&iopmp, RRIDSCP_OFFSET,
+                   ((uint32_t)RRIDSCP_OP_DONT_STALL << 30) | 5, 4);
+    iopmp_validate_access(&iopmp, &iopmp_trans_req, &iopmp_trans_rsp, &intrpt);
+    FAIL_IF((iopmp_trans_rsp.rrid_stalled_no_available_buffer != 0));
+    CHECK_IOPMP_TRANS(&iopmp, IOPMP_SUCCESS, ENTRY_MATCH);
+    // Reset configuration
+    cfg.imp_stall_buffer = true;
+    END_TEST();)
+
     START_TEST_IF(iopmp.reg_file.hwcfg3.rrid_transl_en, "Test Cascading IOPMP Feature",
     reset_iopmp(&iopmp, &cfg);
     configure_srcmd_n(&iopmp, SRCMD_EN, 32, 0x10, 4);
