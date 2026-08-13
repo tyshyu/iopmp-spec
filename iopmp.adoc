@@ -10,6 +10,11 @@
 :colophon:
 :appendix-caption: Appendix
 :imagesdir: .
+// Marks the aggregate build. Included files use it to pick image paths that
+// are relative to this file's directory; without it (e.g. when a single
+// included file is previewed on its own) they fall back to paths relative to
+// their own directory. See {imgpath} in the included files.
+:iopmp-spec-build:
 :title-logo-image: image:./docs-resources/images/risc-v_logo.svg[pdfwidth=3.25in,align=center]
 // Settings:
 :experimental:

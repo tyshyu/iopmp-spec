@@ -1,6 +1,9 @@
 [#srcmd-table-formats]
 === SRCMD Table Reduction
 
+ifdef::iopmp-spec-build[:imgpath: images]
+ifndef::iopmp-spec-build[:imgpath: ../images]
+
 The IOPMP specification provides SRCMD Table reduction strategies to minimize hardware resource utilization in systems with simplified access control requirements. These strategies enable area-efficient implementations by reducing or eliminating SRCMD Table lookups while maintaining essential protection functionality.
 
 ==== Source-Enforcement
@@ -11,12 +14,7 @@ Source-enforcement is particularly beneficial in heterogeneous systems where som
 
 [#IOPMP_SE_Example]
 .Example implementation of source-enforcement where RISC-V harts use PMP while heterogeneous cores and DMA rely on IOPMP-SE.
-ifndef::backend-pdf[]
-image::../images/IOPMP_SE.drawio.png[]
-endif::[]
-ifdef::backend-pdf[]
-image::./images/IOPMP_SE.drawio.png[]
-endif::[]
+image::{imgpath}/IOPMP_SE.drawio.png[]
 
 ==== SRCMD Table in the Exclusive Format
 
@@ -41,12 +39,7 @@ For 0 &#x2264; _m_ &#x2264; 30, `MDLCK.md[_m_]` locks `SRCMD_PERM(_m_)` and `SRC
 
 [#Example_Format_2]
 .An example block diagram of SRCMD Table MD-indexed Format Implementation.
-ifdef::backend-pdf[]
-image::./images/srcmd_format2_example.png[]
-endif::[]
-ifndef::backend-pdf[]
-image::../images/srcmd_format2_example.png[]
-endif::[]
+image::{imgpath}/srcmd_format2_example.png[]
 
 `SRCMD_PERM(_m_)` and `SRCMD_PERMH(_m_)` are available when `HWCFG3.srcmd_fmt` = 2.
 In MD-indexed Format, an IOPMP checks both the permission of `SRCMD_PERM(H)(_m_)` and the `ENTRY_CFG.r/w/x` permission.
