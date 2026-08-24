@@ -1,5 +1,8 @@
 === IOPMP Implementation Models
 
+ifdef::iopmp-spec-build[:imgpath: application_note/images]
+ifndef::iopmp-spec-build[:imgpath: images]
+
 The IOPMP specification supports multiple implementation models that combine different SRCMD Table and MDCFG Table formats to address specific system requirements. These models provide convenient reference configurations for common use cases, enabling designers to select appropriate trade-offs between hardware complexity, flexibility, and performance.
 
 ==== Full Model
@@ -26,12 +29,7 @@ The Rapid-k Model simplifies MDCFG Table lookup by implementing a fixed entry al
 *Use cases*: Systems with uniform memory region sizes, real-time systems requiring predictable access latency, applications with regular memory partitioning.
 
 .Block diagram of the Rapid-4 model implementation. The MDCFG Table is simplified to a constant mapping where each memory domain contains exactly four entries.
-ifdef::backend-pdf[]
-image::application_note/images/iopmp_unit_block_diagram_rapid_4.png[]
-endif::[]
-ifndef::backend-pdf[]
-image::images/iopmp_unit_block_diagram_rapid_4.png[]
-endif::[]
+image::{imgpath}/iopmp_unit_block_diagram_rapid_4.png[]
 
 ==== Dynamic-_k_ Model
 
@@ -86,11 +84,6 @@ The Compact-k Model maximizes area efficiency by combining both SRCMD and MDCFG 
 *Use cases*: Resource-constrained embedded systems, cost-sensitive applications, simple protection scenarios with isolated requesters and uniform memory regions.
 
 .Block diagram of the Compact-4 model implementation, combining SRCMD Format 1 and MDCFG Format 1 for maximum area efficiency.
-ifdef::backend-pdf[]
-image::application_note/images/iopmp_unit_block_diagram_compact_4.png[]
-endif::[]
-ifndef::backend-pdf[]
-image::images/iopmp_unit_block_diagram_compact_4.png[]
-endif::[]
+image::{imgpath}/iopmp_unit_block_diagram_compact_4.png[]
 
 These models serve as implementation guidelines, allowing system designers to choose configurations that best match their area constraints, performance requirements, and protection granularity needs. The selection involves trade-offs between hardware complexity, flexibility, isolation strength, and configuration overhead.
